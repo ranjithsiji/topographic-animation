@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abstract Patterns Hub</title>
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --card-bg: #161616;
+            --accent: #ffffff;
+            --text-dim: #888;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg);
+            color: white;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            letter-spacing: -1px;
+            margin-bottom: 10px;
+        }
+
+        p.subtitle {
+            color: var(--text-dim);
+            font-size: 1.1rem;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            max-width: 900px;
+            width: 90%;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid #333;
+            border-radius: 20px;
+            padding: 30px;
+            text-decoration: none;
+            color: white;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            border-color: var(--accent);
+            transform: translateY(-5px);
+            background: #1c1c1c;
+        }
+
+        .card h2 {
+            margin-top: 0;
+            font-size: 1.5rem;
+        }
+
+        .card p {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: #bbb;
+        }
+
+        .tag {
+            display: inline-block;
+            background: #333;
+            padding: 4px 10px;
+            border-radius: 5px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+        }
+
+        .arrow {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            font-size: 1.5rem;
+            opacity: 0.3;
+            transition: opacity 0.3s;
+        }
+
+        .card:hover .arrow {
+            opacity: 1;
+        }
+
+        footer {
+            margin-top: 80px;
+            text-align: center;
+            padding: 40px 20px;
+            border-top: 1px solid #222;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .footer-credits {
+            font-size: 0.8rem;
+            color: #555;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .footer-links {
+            font-size: 0.85rem;
+            color: #888;
+        }
+
+        .footer-links a {
+            color: #ccc;
+            text-decoration: none;
+            margin: 0 10px;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: white;
+        }
+
+        .highlight {
+            color: #fff;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Abstract Generative Art</h1>
+        <p class="subtitle">Smooth mathematical noise explorations</p>
+    </header>
+
+    <div class="container">
+        <a href="topo.html" class="card">
+            <span class="tag">Isolines</span>
+            <h2>Topographic Contours</h2>
+            <p>Closed-loop "islands" and rings that morph organically. Uses Marching Squares with linear interpolation for high-fidelity smoothness.</p>
+            <div class="arrow">→</div>
+        </a>
+
+        <a href="flow.html" class="card">
+            <span class="tag">Flow Field</span>
+            <h2>Organic Flow</h2>
+            <p>Continuous fluid paths and string-like waves. Uses Quadratic Bezier curves to create a liquid, swimming effect across the screen.</p>
+            <div class="arrow">→</div>
+        </a>
+    </div>
+
+    <footer>
+        <div class="footer-credits">
+            Developed with <span class="highlight">Simplex Noise 3D</span> & <span class="highlight">HTML5 Canvas</span>
+        </div>
+        <div class="footer-links">
+            <span>&copy; 2024 Generative Art Lab</span>
+            <span style="margin: 0 15px;">|</span>
+            <a href="README.md">Documentation</a>
+            <a href="https://github.com/jwagner/simplex-noise.js" target="_blank">Simplex Library</a>
+        </div>
+    </footer>
+
+</body>
+</html>
