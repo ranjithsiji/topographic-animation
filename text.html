@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Typographic Fluidity</title>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Inter', system-ui, sans-serif; }
+        canvas { display: block; }
+        
+        #ui {
+            position: absolute; top: 20px; left: 20px; background: rgba(0, 0, 0, 0.85);
+            padding: 20px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white; width: 240px; backdrop-filter: blur(15px);
+            z-index: 100;
+        }
+
+        .row { margin-bottom: 15px; }
+        label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 6px; color: #888; }
+        
+        input[type="text"], input[type="range"] { width: 100%; cursor: pointer; accent-color: #fff; }
+        input[type="text"] { background: #222; color: white; border: 1px solid #444; padding: 8px; border-radius: 4px; box-sizing: border-box; }
+        
+        .flex-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        input[type="color"] { border: none; width: 40px; height: 25px; cursor: pointer; background: none; }
+        input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: #fff; }
+    </style>
+</head>
+<body>
+
+<div id="ui">
+    <div class="row">
+        <label>Text & Color</label>
+        <input type="text" id="textInput" value="GEMINI">
+    </div>
+
+    <div class="row">
+        <div class="flex-row">
+            <input type="color" id="color" value="#ffffff">
+            <div class="flex-row">
+                <span style="font-size: 10px; color: #888;">GLOW</span>
+                <input type="checkbox" id="glowToggle" checked>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <label>Font Size</label>
+        <input type="range" id="fontSize" min="10" max="60" value="24">
+    </div>
+
+    <div class="row">
+        <label>Grid Density</label>
+        <input type="range" id="gridSize" min="20" max="100" value="40">
+    </div>
+
+    <div class="row">
+        <label>Flow Speed</label>
+        <input type="range" id="speed" min="1" max="50" value="15">
+    </div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const simplex = new SimplexNoise();
+
+    const gui = {
+        text: document.getElementById('textInput'),
+        color: document.getElementById('color'),
+        glow: document.getElementById('glowToggle'),
+        size: document.getElementById('fontSize'),
+        grid: document.getElementById('gridSize'),
+        speed: document.getElementById('speed')
+    };
+
+    let width, height, z = 0;
+
+    function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+    }
+
+    function animate() {
+        // Trail effect for fluid motion
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.fillRect(0, 0, width, height);
+        
+        const color = gui.color.value;
+        const fontSize = parseInt(gui.size.value);
+        const spacing = parseInt(gui.grid.value);
+        const inputText = gui.text.value || " ";
+        const zoom = 500;
+
+        ctx.font = `bold ${fontSize}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = color;
+
+        if (gui.glow.checked) {
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = color;
+        } else {
+            ctx.shadowBlur = 0;
+        }
+
+        let charIndex = 0;
+
+        for (let x = spacing/2; x < width + spacing; x += spacing) {
+            for (let y = spacing/2; y < height + spacing; y += spacing) {
+                
+                // Get noise for rotation and slight position drift
+                const n = simplex.noise3D(x / zoom, y / zoom, z);
+                const driftX = simplex.noise3D(x / zoom + 100, y / zoom, z) * (spacing * 0.5);
+                const driftY = simplex.noise3D(x / zoom, y / zoom + 100, z) * (spacing * 0.5);
+
+                ctx.save();
+                ctx.translate(x + driftX, y + driftY);
+                ctx.rotate(n * Math.PI);
+                
+                // Get the current character from the string
+                const char = inputText[charIndex % inputText.length];
+                
+                ctx.fillText(char, 0, 0);
+                ctx.restore();
+                
+                charIndex++;
+            }
+        }
+
+        z += gui.speed.value * 0.0005;
+        requestAnimationFrame(animate);
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+    animate();
+</script>
+</body>
+</html>

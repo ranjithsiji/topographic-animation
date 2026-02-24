@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ethereal Particle Flow</title>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Inter', sans-serif; }
+        canvas { display: block; }
+        
+        #ui {
+            position: absolute; top: 20px; left: 20px; background: rgba(0, 0, 0, 0.85);
+            padding: 20px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white; width: 220px; backdrop-filter: blur(15px);
+        }
+
+        .row { margin-bottom: 15px; }
+        label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 6px; color: #888; }
+        input[type="range"] { width: 100%; cursor: pointer; accent-color: #fff; }
+        .flex-row { display: flex; align-items: center; justify-content: space-between; }
+        input[type="color"] { border: none; width: 40px; height: 25px; cursor: pointer; background: none; }
+    </style>
+</head>
+<body>
+
+<div id="ui">
+    <div class="row">
+        <label>Particle Color</label>
+        <input type="color" id="color" value="#ffffff">
+    </div>
+    <div class="row">
+        <label>Particle Count</label>
+        <input type="range" id="count" min="1000" max="8000" value="3000">
+    </div>
+    <div class="row">
+        <label>Flow Turbulence</label>
+        <input type="range" id="zoom" min="100" max="1000" value="400">
+    </div>
+    <div class="row">
+        <label>Speed</label>
+        <input type="range" id="speed" min="1" max="10" value="2">
+    </div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const simplex = new SimplexNoise();
+
+    const gui = {
+        color: document.getElementById('color'),
+        count: document.getElementById('count'),
+        zoom: document.getElementById('zoom'),
+        speed: document.getElementById('speed')
+    };
+
+    let width, height;
+    let particles = [];
+    let z = 0;
+
+    class Particle {
+        constructor() {
+            this.reset();
+        }
+
+        reset() {
+            this.x = Math.random() * width;
+            this.y = Math.random() * height;
+            this.vx = 0;
+            this.vy = 0;
+            this.life = Math.random() * 200 + 100;
+            this.size = Math.random() * 1.5 + 0.5;
+        }
+
+        update() {
+            const zoom = gui.zoom.value;
+            const speed = gui.speed.value * 0.1;
+            
+            // Get angle from noise field
+            const angle = simplex.noise3D(this.x / zoom, this.y / zoom, z) * Math.PI * 2;
+            
+            // Apply force
+            this.vx += Math.cos(angle) * speed;
+            this.vy += Math.sin(angle) * speed;
+            
+            // Friction (prevents infinite acceleration)
+            this.vx *= 0.95;
+            this.vy *= 0.95;
+            
+            this.x += this.vx;
+            this.y += this.vy;
+            this.life--;
+
+            if (this.life <= 0 || this.x < 0 || this.x > width || this.y < 0 || this.y > height) {
+                this.reset();
+            }
+        }
+
+        draw() {
+            // Lower alpha based on life for a fade-in/out effect
+            const alpha = Math.min(this.life / 50, 1);
+            ctx.fillStyle = gui.color.value;
+            ctx.globalAlpha = alpha * 0.5;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    function initParticles() {
+        particles = [];
+        for (let i = 0; i < gui.count.value; i++) {
+            particles.push(new Particle());
+        }
+    }
+
+    function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+        initParticles();
+    }
+
+    function animate() {
+        // Subtle trail effect
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+        ctx.fillRect(0, 0, width, height);
+
+        // Update particle count if changed
+        if (particles.length !== parseInt(gui.count.value)) initParticles();
+
+        particles.forEach(p => {
+            p.update();
+            p.draw();
+        });
+
+        z += 0.003;
+        requestAnimationFrame(animate);
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+    animate();
+</script>
+</body>
+</html>

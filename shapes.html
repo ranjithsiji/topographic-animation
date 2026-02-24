@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fluid Shape Mosaic - Glow Edition</title>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Inter', system-ui, sans-serif; }
+        canvas { display: block; }
+        
+        #ui {
+            position: absolute; top: 20px; left: 20px; background: rgba(0, 0, 0, 0.85);
+            padding: 20px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white; width: 240px; backdrop-filter: blur(15px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            z-index: 100;
+        }
+
+        .row { margin-bottom: 15px; }
+        label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 6px; color: #888; }
+        
+        select, input[type="range"] { width: 100%; cursor: pointer; accent-color: #fff; }
+        select { background: #222; color: white; border: 1px solid #444; padding: 6px; border-radius: 4px; }
+        
+        .flex-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        input[type="color"] { border: none; width: 40px; height: 25px; cursor: pointer; background: none; }
+        input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: #fff; }
+    </style>
+</head>
+<body>
+
+<div id="ui">
+    <div class="row">
+        <label>Color & Effects</label>
+        <div class="flex-row">
+            <input type="color" id="color" value="#ffffff">
+            <div class="flex-row">
+                <span style="font-size: 10px; color: #888;">GLOW</span>
+                <input type="checkbox" id="glowToggle" checked>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <label>Shape Type</label>
+        <select id="shapeType">
+            <option value="mix">Mixed Shapes</option>
+            <option value="square">Squares</option>
+            <option value="circle">Circles</option>
+            <option value="triangle">Triangles</option>
+        </select>
+    </div>
+
+    <div class="row">
+        <label>Movement (Drift)</label>
+        <input type="range" id="drift" min="0" max="150" value="50">
+    </div>
+
+    <div class="row">
+        <label>Grid Density</label>
+        <input type="range" id="gridSize" min="30" max="100" value="60">
+    </div>
+
+    <div class="row">
+        <label>Morph Speed</label>
+        <input type="range" id="speed" min="1" max="60" value="20">
+    </div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const simplex = new SimplexNoise();
+
+    const gui = {
+        color: document.getElementById('color'),
+        glow: document.getElementById('glowToggle'),
+        shape: document.getElementById('shapeType'),
+        drift: document.getElementById('drift'),
+        grid: document.getElementById('gridSize'),
+        speed: document.getElementById('speed')
+    };
+
+    let width, height, z = 0;
+
+    function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+    }
+
+    function drawTriangle(size) {
+        ctx.beginPath();
+        ctx.moveTo(0, -size);
+        ctx.lineTo(size, size);
+        ctx.lineTo(-size, size);
+        ctx.closePath();
+        ctx.stroke();
+    }
+
+    function animate() {
+        // Subtle trail persistence
+        ctx.globalAlpha = 1.0;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+        ctx.fillRect(0, 0, width, height);
+        
+        const lineColor = gui.color.value;
+        ctx.strokeStyle = lineColor;
+        ctx.lineWidth = 1.5;
+
+        // Glow Logic
+        if (gui.glow.checked) {
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = lineColor;
+        } else {
+            ctx.shadowBlur = 0;
+        }
+
+        const spacing = parseInt(gui.grid.value);
+        const driftMag = parseInt(gui.drift.value);
+        const type = gui.shape.value;
+        const zoom = 500;
+
+        for (let x = spacing/2; x < width + spacing; x += spacing) {
+            for (let y = spacing/2; y < height + spacing; y += spacing) {
+                
+                // Fetch noise for translation, rotation, and scale
+                const nx = simplex.noise3D(x / zoom, y / zoom, z);
+                const ny = simplex.noise3D(x / zoom + 50, y / zoom + 50, z);
+                const nr = simplex.noise3D(x / zoom - 50, y / zoom - 50, z);
+
+                ctx.save();
+                
+                // Add movement drift
+                ctx.translate(x + nx * driftMag, y + ny * driftMag);
+                
+                // Apply rotation and scale morphing
+                ctx.rotate(nr * Math.PI);
+                const s = Math.abs(nr) * 0.7 + 0.3;
+                ctx.scale(s, s);
+
+                let currentShape = type;
+                if (type === 'mix') {
+                    const noiseVal = Math.abs(nx);
+                    if (noiseVal < 0.33) currentShape = 'circle';
+                    else if (noiseVal < 0.66) currentShape = 'square';
+                    else currentShape = 'triangle';
+                }
+
+                const shapeSize = spacing * 0.3;
+
+                if (currentShape === 'circle') {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, shapeSize, 0, Math.PI * 2);
+                    ctx.stroke();
+                } else if (currentShape === 'square') {
+                    ctx.strokeRect(-shapeSize, -shapeSize, shapeSize * 2, shapeSize * 2);
+                } else if (currentShape === 'triangle') {
+                    drawTriangle(shapeSize);
+                }
+
+                ctx.restore();
+            }
+        }
+
+        z += gui.speed.value * 0.0004;
+        requestAnimationFrame(animate);
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+    animate();
+</script>
+</body>
+</html>
