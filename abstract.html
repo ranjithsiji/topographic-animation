@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smooth Organic Flow Field</title>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; }
+        canvas { display: block; }
+        #ui {
+            position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.8);
+            padding: 15px; border-radius: 10px; border: 1px solid #444; color: white;
+            width: 200px; backdrop-filter: blur(10px);
+        }
+        .row { margin-bottom: 12px; }
+        label { display: block; font-size: 10px; text-transform: uppercase; margin-bottom: 5px; color: #888; }
+        input { width: 100%; accent-color: #fff; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div id="ui">
+    <div class="row">
+        <label>Flow Complexity</label>
+        <input type="range" id="zoom" min="100" max="1000" value="500">
+    </div>
+    <div class="row">
+        <label>Line Count</label>
+        <input type="range" id="count" min="20" max="200" value="80">
+    </div>
+    <div class="row">
+        <label>Morph Speed</label>
+        <input type="range" id="speed" min="1" max="50" value="10">
+    </div>
+    <div class="row">
+        <label>Thickness</label>
+        <input type="range" id="thickness" min="0.5" max="4" step="0.5" value="1.5">
+    </div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const simplex = new SimplexNoise();
+
+    const gui = {
+        zoom: document.getElementById('zoom'),
+        count: document.getElementById('count'),
+        speed: document.getElementById('speed'),
+        thickness: document.getElementById('thickness')
+    };
+
+    let width, height;
+    let time = 0;
+
+    function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+    }
+
+    // Mathematical function to draw a smooth curve through points
+    function drawSmoothPath(points) {
+        if (points.length < 3) return;
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+
+        for (let i = 1; i < points.length - 2; i++) {
+            const xc = (points[i].x + points[i + 1].x) / 2;
+            const yc = (points[i].y + points[i + 1].y) / 2;
+            ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+        }
+        // curve through the last two points
+        ctx.quadraticCurveTo(
+            points[points.length - 2].x,
+            points[points.length - 2].y,
+            points[points.length - 1].x,
+            points[points.length - 1].y
+        );
+        ctx.stroke();
+    }
+
+    function animate() {
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = gui.thickness.value;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        const zoom = gui.zoom.value;
+        const lineCount = gui.count.value;
+        const morphSpeed = gui.speed.value * 0.0002;
+
+        // Generate lines based on a grid, but warped by noise
+        for (let i = 0; i < lineCount; i++) {
+            let points = [];
+            let xStart = (width / lineCount) * i;
+
+            for (let j = 0; j < 20; j++) {
+                let yPos = (height / 18) * j;
+
+                // The core secret: noise determines the X displacement
+                let noise = simplex.noise3D(xStart / zoom, yPos / zoom, time);
+                let xOffset = noise * (zoom * 0.6);
+
+                points.push({ x: xStart + xOffset, y: yPos });
+            }
+            drawSmoothPath(points);
+        }
+
+        time += morphSpeed;
+        requestAnimationFrame(animate);
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+    animate();
+</script>
+</body>
+</html>

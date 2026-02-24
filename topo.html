@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glow Fluid Topography</title>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Inter', system-ui, sans-serif; }
+        canvas { display: block; }
+
+        #ui {
+            position: absolute; top: 20px; left: 20px; background: rgba(0, 0, 0, 0.85);
+            padding: 20px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white; width: 240px; backdrop-filter: blur(15px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .row { margin-bottom: 15px; }
+        label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 6px; color: #888; }
+
+        input[type="range"] { width: 100%; cursor: pointer; accent-color: #fff; }
+
+        .flex-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        input[type="color"] { border: none; width: 40px; height: 25px; cursor: pointer; background: none; }
+        input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: #fff; }
+    </style>
+</head>
+<body>
+
+<div id="ui">
+    <div class="row">
+        <label>Line Color & Glow</label>
+        <div class="flex-row">
+            <input type="color" id="color" value="#ffffff">
+            <div class="flex-row">
+                <span style="font-size: 10px; color: #888; text-transform: uppercase;">Glow</span>
+                <input type="checkbox" id="glowToggle" checked>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <label>Organic Zoom</label>
+        <input type="range" id="zoom" min="150" max="1000" value="500">
+    </div>
+    <div class="row">
+        <label>Contour Layers</label>
+        <input type="range" id="layers" min="2" max="15" value="6">
+    </div>
+    <div class="row">
+        <label>Morph Speed</label>
+        <input type="range" id="speed" min="0" max="50" value="10">
+    </div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const simplex = new SimplexNoise();
+
+    const gui = {
+        zoom: document.getElementById('zoom'),
+        layers: document.getElementById('layers'),
+        speed: document.getElementById('speed'),
+        color: document.getElementById('color'),
+        glow: document.getElementById('glowToggle')
+    };
+
+    let width, height;
+    let z = 0;
+    const gridSpacing = 16; // Balance between smoothness and performance
+
+    function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+    }
+
+    function getVal(x, y) {
+        const s = gui.zoom.value;
+        return simplex.noise3D(x / s, y / s, z);
+    }
+
+    function animate() {
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, width, height);
+
+        const lineColor = gui.color.value;
+        ctx.strokeStyle = lineColor;
+        ctx.lineWidth = 1.8;
+        ctx.lineCap = 'round';
+
+        // Glow Logic
+        if (gui.glow.checked) {
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = lineColor;
+        } else {
+            ctx.shadowBlur = 0;
+        }
+
+        const numLayers = parseInt(gui.layers.value);
+
+        for (let l = 0; l < numLayers; l++) {
+            // Threshold logic to create the "islands"
+            const threshold = (l / numLayers) * 1.6 - 0.8;
+            ctx.beginPath();
+
+            for (let x = 0; x < width; x += gridSpacing) {
+                for (let y = 0; y < height; y += gridSpacing) {
+                    const v1 = getVal(x, y);
+                    const v2 = getVal(x + gridSpacing, y);
+                    const v3 = getVal(x + gridSpacing, y + gridSpacing);
+                    const v4 = getVal(x, y + gridSpacing);
+
+                    const getPos = (p1, p2, val1, val2) => {
+                        return p1 + (gridSpacing * (threshold - val1) / (val2 - val1));
+                    };
+
+                    // Linear Interpolation for sub-pixel smoothness
+                    let points = [];
+                    if ((v1 > threshold) !== (v2 > threshold)) points.push({x: getPos(x, x+gridSpacing, v1, v2), y: y});
+                    if ((v2 > threshold) !== (v3 > threshold)) points.push({x: x+gridSpacing, y: getPos(y, y+gridSpacing, v2, v3)});
+                    if ((v3 > threshold) !== (v4 > threshold)) points.push({x: getPos(x, x+gridSpacing, v4, v3), y: y+gridSpacing});
+                    if ((v4 > threshold) !== (v1 > threshold)) points.push({x: x, y: getPos(y, y+gridSpacing, v1, v4)});
+
+                    if (points.length >= 2) {
+                        ctx.moveTo(points[0].x, points[0].y);
+                        ctx.lineTo(points[1].x, points[1].y);
+                    }
+                }
+            }
+            ctx.stroke();
+        }
+
+        z += gui.speed.value * 0.0004;
+        requestAnimationFrame(animate);
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+    animate();
+</script>
+</body>
+</html>
