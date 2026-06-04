@@ -5,40 +5,139 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ethereal Particle Flow</title>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; font-family: 'Inter', sans-serif; }
+        :root { --accent: #aaa; }
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Inter', system-ui, sans-serif; }
         canvas { display: block; }
-        
-        #ui {
-            position: absolute; top: 20px; left: 20px; background: rgba(0, 0, 0, 0.85);
-            padding: 20px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1);
-            color: white; width: 220px; backdrop-filter: blur(15px);
-        }
 
-        .row { margin-bottom: 15px; }
-        label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 6px; color: #888; }
-        input[type="range"] { width: 100%; cursor: pointer; accent-color: #fff; }
-        .flex-row { display: flex; align-items: center; justify-content: space-between; }
-        input[type="color"] { border: none; width: 40px; height: 25px; cursor: pointer; background: none; }
+        #panel {
+            position: fixed;
+            right: 0; top: 0;
+            height: 100vh;
+            width: 270px;
+            background: rgba(5, 5, 5, 0.93);
+            border-left: 1px solid var(--accent);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            transform: translateX(100%);
+            transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100;
+            overflow-y: auto;
+        }
+        #panel.open { transform: translateX(0); }
+
+        #toggle-btn {
+            position: fixed;
+            right: 0; top: 50%;
+            transform: translateY(-50%);
+            width: 28px; height: 60px;
+            background: rgba(12, 12, 12, 0.88);
+            border: 1px solid var(--accent);
+            border-right: none;
+            border-radius: 8px 0 0 8px;
+            color: rgba(255,255,255,0.65);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 101;
+            font-size: 20px;
+            line-height: 1;
+            padding: 0;
+            transition: right 0.32s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s, color 0.2s;
+        }
+        #toggle-btn.open { right: 270px; }
+        #toggle-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+
+        .panel-content { padding: 22px 20px; color: white; }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 22px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+        }
+        .panel-title { font-size: 10px; text-transform: uppercase; letter-spacing: 2.5px; color: #666; }
+        .back-link { font-size: 11px; color: #666; text-decoration: none; transition: color 0.2s; }
+        .back-link:hover { color: #ccc; }
+
+        .row { margin-bottom: 18px; }
+        label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            margin-bottom: 7px;
+            color: #666;
+        }
+        label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+
+        input[type="range"] { width: 100%; cursor: pointer; accent-color: var(--accent); }
+        .flex-row { display: flex; align-items: center; gap: 12px; }
+        input[type="color"] {
+            border: none; width: 38px; height: 26px;
+            cursor: pointer; background: none;
+            border-radius: 5px; flex-shrink: 0;
+        }
+        .color-hint { font-size: 11px; color: #555; }
+
+        hr.sep { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin: 20px 0; }
     </style>
 </head>
 <body>
 
-<div id="ui">
-    <div class="row">
-        <label>Particle Color</label>
-        <input type="color" id="color" value="#ffffff">
-    </div>
-    <div class="row">
-        <label>Particle Count</label>
-        <input type="range" id="count" min="1000" max="8000" value="3000">
-    </div>
-    <div class="row">
-        <label>Flow Turbulence</label>
-        <input type="range" id="zoom" min="100" max="1000" value="400">
-    </div>
-    <div class="row">
-        <label>Speed</label>
-        <input type="range" id="speed" min="1" max="10" value="2">
+<button id="toggle-btn">&#8249;</button>
+
+<div id="panel">
+    <div class="panel-content">
+        <div class="panel-header">
+            <a href="index.html" class="back-link">← Index</a>
+            <span class="panel-title">Controls</span>
+        </div>
+
+        <div class="row">
+            <label>Particle Color</label>
+            <div class="flex-row">
+                <input type="color" id="color" value="#ffffff">
+                <span class="color-hint">Hue of all particles</span>
+            </div>
+        </div>
+
+        <hr class="sep">
+
+        <div class="row">
+            <label>Particle Count <span class="val" id="count-val">3000</span></label>
+            <input type="range" id="count" min="500" max="10000" step="100" value="3000">
+        </div>
+
+        <div class="row">
+            <label>Flow Turbulence <span class="val" id="zoom-val">400</span></label>
+            <input type="range" id="zoom" min="100" max="1000" value="400">
+        </div>
+
+        <div class="row">
+            <label>Speed <span class="val" id="speed-val">2</span></label>
+            <input type="range" id="speed" min="1" max="10" value="2">
+        </div>
+
+        <hr class="sep">
+
+        <div class="row">
+            <label>Max Particle Size <span class="val" id="size-val">2.0</span></label>
+            <input type="range" id="maxSize" min="0.5" max="5" step="0.5" value="2.0">
+        </div>
+
+        <div class="row">
+            <label>Friction <span class="val" id="friction-val">0.95</span></label>
+            <input type="range" id="friction" min="0.88" max="0.99" step="0.01" value="0.95">
+        </div>
+
+        <div class="row">
+            <label>Trail Length <span class="val" id="trail-val">15</span></label>
+            <input type="range" id="trail" min="3" max="80" value="15">
+        </div>
     </div>
 </div>
 
@@ -52,20 +151,39 @@
     const simplex = new SimplexNoise();
 
     const gui = {
-        color: document.getElementById('color'),
-        count: document.getElementById('count'),
-        zoom: document.getElementById('zoom'),
-        speed: document.getElementById('speed')
+        color:    document.getElementById('color'),
+        count:    document.getElementById('count'),
+        zoom:     document.getElementById('zoom'),
+        speed:    document.getElementById('speed'),
+        maxSize:  document.getElementById('maxSize'),
+        friction: document.getElementById('friction'),
+        trail:    document.getElementById('trail'),
     };
+
+    // Live value readouts
+    [['count','count-val'],['zoom','zoom-val'],['speed','speed-val'],
+     ['maxSize','size-val'],['friction','friction-val'],['trail','trail-val']
+    ].forEach(([id, valId]) => {
+        document.getElementById(id).addEventListener('input', e => {
+            document.getElementById(valId).textContent = e.target.value;
+        });
+    });
+
+    // Panel toggle
+    const panel = document.getElementById('panel');
+    const toggleBtn = document.getElementById('toggle-btn');
+    toggleBtn.addEventListener('click', () => {
+        const open = panel.classList.toggle('open');
+        toggleBtn.classList.toggle('open', open);
+        toggleBtn.innerHTML = open ? '&#8250;' : '&#8249;';
+    });
 
     let width, height;
     let particles = [];
     let z = 0;
 
     class Particle {
-        constructor() {
-            this.reset();
-        }
+        constructor() { this.reset(); }
 
         reset() {
             this.x = Math.random() * width;
@@ -73,24 +191,19 @@
             this.vx = 0;
             this.vy = 0;
             this.life = Math.random() * 200 + 100;
-            this.size = Math.random() * 1.5 + 0.5;
+            this.size = Math.random() * parseFloat(gui.maxSize.value) + 0.3;
         }
 
         update() {
             const zoom = gui.zoom.value;
             const speed = gui.speed.value * 0.1;
-            
-            // Get angle from noise field
+            const friction = parseFloat(gui.friction.value);
+
             const angle = simplex.noise3D(this.x / zoom, this.y / zoom, z) * Math.PI * 2;
-            
-            // Apply force
             this.vx += Math.cos(angle) * speed;
             this.vy += Math.sin(angle) * speed;
-            
-            // Friction (prevents infinite acceleration)
-            this.vx *= 0.95;
-            this.vy *= 0.95;
-            
+            this.vx *= friction;
+            this.vy *= friction;
             this.x += this.vx;
             this.y += this.vy;
             this.life--;
@@ -101,7 +214,6 @@
         }
 
         draw() {
-            // Lower alpha based on life for a fade-in/out effect
             const alpha = Math.min(this.life / 50, 1);
             ctx.fillStyle = gui.color.value;
             ctx.globalAlpha = alpha * 0.5;
@@ -113,7 +225,7 @@
 
     function initParticles() {
         particles = [];
-        for (let i = 0; i < gui.count.value; i++) {
+        for (let i = 0; i < parseInt(gui.count.value); i++) {
             particles.push(new Particle());
         }
     }
@@ -125,19 +237,17 @@
     }
 
     function animate() {
-        // Subtle trail effect
         ctx.globalAlpha = 1;
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+        const trailAlpha = parseInt(gui.trail.value) / 100;
+        ctx.fillStyle = `rgba(0,0,0,${trailAlpha})`;
         ctx.fillRect(0, 0, width, height);
 
-        // Update particle count if changed
-        if (particles.length !== parseInt(gui.count.value)) initParticles();
+        const targetCount = parseInt(gui.count.value);
+        if (particles.length !== targetCount) initParticles();
 
-        particles.forEach(p => {
-            p.update();
-            p.draw();
-        });
+        particles.forEach(p => { p.update(); p.draw(); });
 
+        ctx.globalAlpha = 1;
         z += 0.003;
         requestAnimationFrame(animate);
     }
@@ -145,6 +255,16 @@
     window.addEventListener('resize', resize);
     resize();
     animate();
+
+    // Cycling rainbow accent for controls UI
+    let _accentHue = Math.random() * 360;
+    (function cycleAccent() {
+        _accentHue = (_accentHue + 0.18) % 360;
+        const accent = `hsl(${_accentHue | 0}, 70%, 62%)`;
+        document.documentElement.style.setProperty('--accent', accent);
+        document.querySelectorAll('input[type="range"]').forEach(el => el.style.accentColor = accent);
+        requestAnimationFrame(cycleAccent);
+    })();
 </script>
 </body>
 </html>

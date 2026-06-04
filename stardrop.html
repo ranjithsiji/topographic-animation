@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Falling Stars</title>
+    <style>
+        :root { --accent: #aaa; }
+        body { margin: 0; background: #060826; overflow: hidden; font-family: 'Inter', system-ui, sans-serif; }
+        canvas { display: block; }
+
+        #panel {
+            position: fixed; right: 0; top: 0;
+            height: 100vh; width: 270px;
+            background: rgba(4, 5, 25, 0.96);
+            border-left: 1px solid var(--accent);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            transform: translateX(100%);
+            transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100; overflow-y: auto;
+        }
+        #panel.open { transform: translateX(0); }
+
+        #toggle-btn {
+            position: fixed; right: 0; top: 50%;
+            transform: translateY(-50%);
+            width: 28px; height: 60px;
+            background: rgba(4, 5, 25, 0.9);
+            border: 1px solid var(--accent); border-right: none;
+            border-radius: 8px 0 0 8px;
+            color: rgba(255,255,255,0.65); cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 101; font-size: 20px; line-height: 1; padding: 0;
+            transition: right 0.32s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s;
+        }
+        #toggle-btn.open { right: 270px; }
+        #toggle-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+
+        .panel-content { padding: 22px 20px; color: white; }
+        .panel-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 22px; padding-bottom: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .panel-title { font-size: 10px; text-transform: uppercase; letter-spacing: 2.5px; color: #666; }
+        .back-link { font-size: 11px; color: #666; text-decoration: none; transition: color 0.2s; }
+        .back-link:hover { color: #ccc; }
+        .row { margin-bottom: 18px; }
+        label {
+            display: flex; justify-content: space-between;
+            font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px;
+            margin-bottom: 7px; color: #666;
+        }
+        label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+        input[type="range"] { width: 100%; cursor: pointer; accent-color: var(--accent); }
+        .flex-row { display: flex; align-items: center; gap: 12px; }
+        input[type="color"] {
+            border: none; width: 38px; height: 26px;
+            cursor: pointer; background: none; border-radius: 5px; flex-shrink: 0;
+        }
+        .color-hint { font-size: 11px; color: #555; }
+        hr.sep { border: none; border-top: 1px solid rgba(255,255,255,0.05); margin: 18px 0; }
+    </style>
+</head>
+<body>
+
+<button id="toggle-btn">&#8249;</button>
+
+<div id="panel">
+    <div class="panel-content">
+        <div class="panel-header">
+            <a href="index.html" class="back-link">← Index</a>
+            <span class="panel-title">Controls</span>
+        </div>
+
+        <div class="row">
+            <label>Star Color</label>
+            <div class="flex-row">
+                <input type="color" id="starColor" value="#dde8ff">
+                <span class="color-hint">Primary stars</span>
+            </div>
+        </div>
+        <div class="row">
+            <label>Accent Color</label>
+            <div class="flex-row">
+                <input type="color" id="accentColor" value="#ffd060">
+                <span class="color-hint">Gold stars</span>
+            </div>
+        </div>
+
+        <div class="row">
+            <label>Gold Ratio % <span class="val" id="gold-val">28</span></label>
+            <input type="range" id="goldRatio" min="0" max="100" value="28">
+        </div>
+
+        <hr class="sep">
+
+        <div class="row">
+            <label>Star Count <span class="val" id="count-val">280</span></label>
+            <input type="range" id="starCount" min="50" max="700" step="10" value="280">
+        </div>
+
+        <div class="row">
+            <label>Fall Speed <span class="val" id="speed-val">5</span></label>
+            <input type="range" id="fallSpeed" min="1" max="18" value="5">
+        </div>
+
+        <div class="row">
+            <label>Max Star Size <span class="val" id="size-val">22</span></label>
+            <input type="range" id="maxSize" min="6" max="40" value="22">
+        </div>
+
+        <div class="row">
+            <label>Star Glow <span class="val" id="glow-val">0</span></label>
+            <input type="range" id="starGlow" min="0" max="25" value="0">
+        </div>
+
+        <hr class="sep">
+
+        <div class="row">
+            <label>Ray Intensity <span class="val" id="ray-val">8</span></label>
+            <input type="range" id="rayInt" min="0" max="20" value="8">
+        </div>
+
+        <div class="row">
+            <label>Ground Glow <span class="val" id="gglow-val">0</span></label>
+            <input type="range" id="groundGlow" min="0" max="35" value="0">
+        </div>
+    </div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx    = canvas.getContext('2d');
+
+    const gui = {
+        starColor:  document.getElementById('starColor'),
+        accentColor:document.getElementById('accentColor'),
+        goldRatio:  document.getElementById('goldRatio'),
+        starCount:  document.getElementById('starCount'),
+        fallSpeed:  document.getElementById('fallSpeed'),
+        maxSize:    document.getElementById('maxSize'),
+        starGlow:   document.getElementById('starGlow'),
+        rayInt:     document.getElementById('rayInt'),
+        groundGlow: document.getElementById('groundGlow'),
+    };
+
+    const GROUND = 0.855; // ground line as fraction of screen height
+
+    let width, height, time = 0;
+    let stars = [], rays = [];
+
+    // ── helpers ──────────────────────────────────────────────────────────────
+
+    function hexRgb(hex) {
+        return [
+            parseInt(hex.slice(1,3), 16),
+            parseInt(hex.slice(3,5), 16),
+            parseInt(hex.slice(5,7), 16),
+        ];
+    }
+
+    // Trace a 5-pointed star path centred at (0,0)
+    function starPath(outerR, innerR) {
+        ctx.beginPath();
+        for (let i = 0; i < 10; i++) {
+            const r     = i % 2 === 0 ? outerR : innerR;
+            const angle = (i * Math.PI / 5) - Math.PI / 2; // point up
+            if (i === 0) ctx.moveTo(r * Math.cos(angle), r * Math.sin(angle));
+            else         ctx.lineTo(r * Math.cos(angle), r * Math.sin(angle));
+        }
+        ctx.closePath();
+    }
+
+    // ── light rays ───────────────────────────────────────────────────────────
+
+    class LightRay {
+        constructor() {
+            this.x     = (0.1 + Math.random() * 0.8) * width; // avoid extreme edges
+            this.hw    = (0.03 + Math.random() * 0.07) * width; // half-width at top
+            this.phase = Math.random() * Math.PI * 2;
+            this.base  = Math.random() * 0.08 + 0.03;
+        }
+
+        draw(r, g, b) {
+            const intensity = parseInt(gui.rayInt.value);
+            if (intensity === 0) return;
+            const a = (this.base * intensity / 20) * (0.55 + 0.45 * Math.sin(time * 0.7 + this.phase));
+            const groundY = height * GROUND;
+
+            const grad = ctx.createLinearGradient(this.x, 0, this.x, groundY);
+            grad.addColorStop(0,   `rgba(${r},${g},${b},${a})`);
+            grad.addColorStop(0.55,`rgba(${r},${g},${b},${(a * 0.3).toFixed(3)})`);
+            grad.addColorStop(1,   'rgba(0,0,0,0)');
+
+            ctx.beginPath();
+            ctx.moveTo(this.x - this.hw,         0);
+            ctx.lineTo(this.x + this.hw,         0);
+            ctx.lineTo(this.x + this.hw * 3.5,   groundY);
+            ctx.lineTo(this.x - this.hw * 3.5,   groundY);
+            ctx.closePath();
+            ctx.fillStyle = grad;
+            ctx.fill();
+        }
+    }
+
+    // ── falling star ─────────────────────────────────────────────────────────
+
+    class FallingStar {
+        constructor(init = false) { this.spawn(init); }
+
+        spawn(init = false) {
+            const maxSz   = parseInt(gui.maxSize.value);
+            this.size     = Math.random() * (maxSz - 4) + 4;
+            this.innerR   = this.size * 0.42;
+            this.x        = (Math.random() * 1.06 - 0.03) * width;
+            this.vy       = Math.random() * 1.6 + 0.35;
+            this.vx       = (Math.random() - 0.5) * 0.55;
+            this.rotation = Math.random() * Math.PI * 2;
+            this.rotSpd   = (Math.random() - 0.5) * 0.018;
+            this.baseAlpha= Math.random() * 0.45 + 0.45;
+            this.curAlpha = this.baseAlpha;
+            this.isGold   = Math.random() * 100 < parseInt(gui.goldRatio.value);
+            this.twPhase  = Math.random() * Math.PI * 2;
+            this.twSpeed  = 0.025 + Math.random() * 0.04;
+            this.landed   = false;
+            this.landTimer= 0;
+            this.landMax  = 50 + Math.random() * 80;
+
+            this.y = init
+                ? Math.random() * height * GROUND   // spread across screen on init
+                : -this.size * 2;                   // spawn above screen
+        }
+
+        update() {
+            const spd     = parseFloat(gui.fallSpeed.value) / 5;
+            const groundY = height * GROUND;
+
+            if (!this.landed) {
+                this.y        += this.vy * spd;
+                this.x        += this.vx;
+                this.rotation += this.rotSpd;
+                this.twPhase  += this.twSpeed;
+
+                if (this.y + this.size * 0.5 >= groundY) {
+                    this.y      = groundY - this.size * 0.3;
+                    this.landed = true;
+                }
+            } else {
+                this.landTimer++;
+                this.curAlpha = this.baseAlpha * Math.max(0, 1 - this.landTimer / this.landMax);
+                if (this.curAlpha <= 0) this.spawn(false);
+            }
+        }
+
+        // Draw without shadow — used in both normal and glow pass
+        _draw(r, g, b, r2, g2, b2, alpha) {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this.rotation);
+            starPath(this.size, this.innerR);
+            ctx.fillStyle = this.isGold
+                ? `rgba(${r2},${g2},${b2},${alpha.toFixed(3)})`
+                : `rgba(${r},${g},${b},${alpha.toFixed(3)})`;
+            ctx.fill();
+            ctx.restore();
+        }
+
+        drawBase(r, g, b, r2, g2, b2) {
+            if (this.curAlpha <= 0) return;
+            const tw = this.landed ? 1 : 0.72 + 0.28 * Math.sin(this.twPhase);
+            this._draw(r, g, b, r2, g2, b2, this.curAlpha * tw);
+        }
+
+        drawGlow(r, g, b, r2, g2, b2) {
+            if (this.curAlpha <= 0 || this.size < 10) return;
+            const tw = this.landed ? 1 : 0.72 + 0.28 * Math.sin(this.twPhase);
+            this._draw(r, g, b, r2, g2, b2, this.curAlpha * tw);
+        }
+    }
+
+    // ── scene drawing ─────────────────────────────────────────────────────────
+
+    function drawBackground(r, g, b) {
+        // Fade to deep navy
+        ctx.fillStyle = 'rgba(6, 8, 38, 0.32)';
+        ctx.fillRect(0, 0, width, height);
+
+        // Top-centre bright glow (where stars cluster)
+        const cx = width / 2;
+        const tg = ctx.createRadialGradient(cx, -height * 0.05, 0, cx, -height * 0.05, height * 0.9);
+        tg.addColorStop(0,   `rgba(${r},${g},${b},0.14)`);
+        tg.addColorStop(0.35,`rgba(${Math.floor(r*0.5)},${Math.floor(g*0.5)},${Math.floor(b*0.6)},0.05)`);
+        tg.addColorStop(1,   'rgba(0,0,0,0)');
+        ctx.fillStyle = tg;
+        ctx.fillRect(0, 0, width, height);
+    }
+
+    function drawGround(r, g, b) {
+        const groundY = height * GROUND;
+        const gAmt    = parseInt(gui.groundGlow.value);
+
+        // Ground surface fill — dark, slightly blue-tinted
+        const gg = ctx.createLinearGradient(0, groundY, 0, height);
+        gg.addColorStop(0, `rgba(${Math.floor(r*0.18)},${Math.floor(g*0.18)},${Math.floor(b*0.3)},0.95)`);
+        gg.addColorStop(1, `rgba(${Math.floor(r*0.04)},${Math.floor(g*0.04)},${Math.floor(b*0.1)},1)`);
+        ctx.fillStyle = gg;
+        ctx.fillRect(0, groundY, width, height - groundY);
+
+        if (gAmt > 0) {
+            const a = gAmt / 35;
+
+            // Glowing ground line
+            ctx.save();
+            ctx.shadowBlur  = gAmt;
+            ctx.shadowColor = `rgb(${r},${g},${b})`;
+            ctx.fillStyle   = `rgba(255,255,255,${0.7 + a * 0.25})`;
+            ctx.fillRect(0, groundY - 1.5, width, 3);
+            ctx.restore();
+
+            // Soft reflection under the line
+            const ref = ctx.createLinearGradient(0, groundY, 0, groundY + 90);
+            ref.addColorStop(0, `rgba(${r},${g},${b},${a * 0.3})`);
+            ref.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = ref;
+            ctx.fillRect(0, groundY + 3, width, 90);
+
+            // Wide horizontal glow spread on the line
+            const spread = ctx.createRadialGradient(width / 2, groundY, 0, width / 2, groundY, width * 0.55);
+            spread.addColorStop(0,   `rgba(${r},${g},${b},${a * 0.18})`);
+            spread.addColorStop(0.5, `rgba(${r},${g},${b},${a * 0.07})`);
+            spread.addColorStop(1,   'rgba(0,0,0,0)');
+            ctx.fillStyle = spread;
+            ctx.fillRect(0, groundY - 20, width, 40);
+        }
+    }
+
+    function drawStars(r, g, b, r2, g2, b2) {
+        const glowAmt = parseInt(gui.starGlow.value);
+
+        // Pass 1: all stars, no shadow (fast)
+        stars.forEach(s => s.drawBase(r, g, b, r2, g2, b2));
+
+        // Pass 2: only larger stars get glow — batch by color to minimise shadow state changes
+        if (glowAmt > 0) {
+            // White glow stars
+            ctx.save();
+            ctx.shadowBlur  = glowAmt;
+            ctx.shadowColor = `rgb(${r},${g},${b})`;
+            stars.filter(s => !s.isGold && s.size >= 10).forEach(s => s.drawGlow(r, g, b, r2, g2, b2));
+            ctx.restore();
+
+            // Gold glow stars
+            ctx.save();
+            ctx.shadowBlur  = glowAmt;
+            ctx.shadowColor = `rgb(${r2},${g2},${b2})`;
+            stars.filter(s => s.isGold && s.size >= 10).forEach(s => s.drawGlow(r, g, b, r2, g2, b2));
+            ctx.restore();
+        }
+    }
+
+    // ── init & lifecycle ──────────────────────────────────────────────────────
+
+    function buildRays() {
+        rays = Array.from({ length: 6 }, () => new LightRay());
+    }
+
+    function syncStarCount() {
+        const n = parseInt(gui.starCount.value);
+        while (stars.length < n) stars.push(new FallingStar(false));
+        while (stars.length > n) stars.pop();
+    }
+
+    function resize() {
+        width  = canvas.width  = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+        stars  = Array.from({ length: parseInt(gui.starCount.value) }, () => new FallingStar(true));
+        buildRays();
+    }
+
+    // ── animate ───────────────────────────────────────────────────────────────
+
+    function animate() {
+        const [r,  g,  b ] = hexRgb(gui.starColor.value);
+        const [r2, g2, b2] = hexRgb(gui.accentColor.value);
+
+        drawBackground(r, g, b);
+
+        // Light rays behind everything
+        rays.forEach(ray => ray.draw(r, g, b));
+
+        // Stars (base pass, then glow pass)
+        syncStarCount();
+        stars.forEach(s => s.update());
+        drawStars(r, g, b, r2, g2, b2);
+
+        // Ground drawn last so it covers landing stars cleanly
+        drawGround(r, g, b);
+
+        time += 0.016;
+        requestAnimationFrame(animate);
+    }
+
+    // ── panel ─────────────────────────────────────────────────────────────────
+
+    const panel     = document.getElementById('panel');
+    const toggleBtn = document.getElementById('toggle-btn');
+    toggleBtn.addEventListener('click', () => {
+        const open = panel.classList.toggle('open');
+        toggleBtn.classList.toggle('open', open);
+        toggleBtn.innerHTML = open ? '&#8250;' : '&#8249;';
+    });
+
+    [['goldRatio','gold-val'],['starCount','count-val'],['fallSpeed','speed-val'],
+     ['maxSize','size-val'],['starGlow','glow-val'],['rayInt','ray-val'],['groundGlow','gglow-val']
+    ].forEach(([id, vid]) => {
+        document.getElementById(id).addEventListener('input', e => {
+            document.getElementById(vid).textContent = e.target.value;
+        });
+    });
+
+    window.addEventListener('resize', resize);
+    resize();
+    animate();
+
+    // Cycling rainbow accent for controls UI
+    let _accentHue = Math.random() * 360;
+    (function cycleAccent() {
+        _accentHue = (_accentHue + 0.18) % 360;
+        const accent = `hsl(${_accentHue | 0}, 70%, 62%)`;
+        document.documentElement.style.setProperty('--accent', accent);
+        document.querySelectorAll('input[type="range"]').forEach(el => el.style.accentColor = accent);
+        requestAnimationFrame(cycleAccent);
+    })();
+</script>
+</body>
+</html>

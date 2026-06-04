@@ -5,36 +5,144 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smooth Organic Flow Field</title>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; }
+        :root { --accent: #aaa; }
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Inter', system-ui, sans-serif; }
         canvas { display: block; }
-        #ui {
-            position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.8);
-            padding: 15px; border-radius: 10px; border: 1px solid #444; color: white;
-            width: 200px; backdrop-filter: blur(10px);
+
+        #panel {
+            position: fixed;
+            right: 0; top: 0;
+            height: 100vh;
+            width: 270px;
+            background: rgba(5, 5, 5, 0.93);
+            border-left: 1px solid var(--accent);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            transform: translateX(100%);
+            transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100;
+            overflow-y: auto;
         }
-        .row { margin-bottom: 12px; }
-        label { display: block; font-size: 10px; text-transform: uppercase; margin-bottom: 5px; color: #888; }
-        input { width: 100%; accent-color: #fff; cursor: pointer; }
+        #panel.open { transform: translateX(0); }
+
+        #toggle-btn {
+            position: fixed;
+            right: 0; top: 50%;
+            transform: translateY(-50%);
+            width: 28px; height: 60px;
+            background: rgba(12, 12, 12, 0.88);
+            border: 1px solid var(--accent);
+            border-right: none;
+            border-radius: 8px 0 0 8px;
+            color: rgba(255,255,255,0.65);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 101;
+            font-size: 20px;
+            line-height: 1;
+            padding: 0;
+            transition: right 0.32s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s, color 0.2s;
+        }
+        #toggle-btn.open { right: 270px; }
+        #toggle-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+
+        .panel-content { padding: 22px 20px; color: white; }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 22px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+        }
+        .panel-title { font-size: 10px; text-transform: uppercase; letter-spacing: 2.5px; color: #666; }
+        .back-link { font-size: 11px; color: #666; text-decoration: none; transition: color 0.2s; }
+        .back-link:hover { color: #ccc; }
+
+        .row { margin-bottom: 18px; }
+        label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            margin-bottom: 7px;
+            color: #666;
+        }
+        label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+
+        input[type="range"] { width: 100%; cursor: pointer; accent-color: var(--accent); }
+        .flex-row { display: flex; align-items: center; gap: 12px; }
+        input[type="color"] {
+            border: none; width: 38px; height: 26px;
+            cursor: pointer; background: none;
+            border-radius: 5px; flex-shrink: 0;
+        }
+        .color-hint { font-size: 11px; color: #555; }
+
+        hr.sep { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin: 20px 0; }
     </style>
 </head>
 <body>
 
-<div id="ui">
-    <div class="row">
-        <label>Flow Complexity</label>
-        <input type="range" id="zoom" min="100" max="1000" value="500">
-    </div>
-    <div class="row">
-        <label>Line Count</label>
-        <input type="range" id="count" min="20" max="200" value="80">
-    </div>
-    <div class="row">
-        <label>Morph Speed</label>
-        <input type="range" id="speed" min="1" max="50" value="10">
-    </div>
-    <div class="row">
-        <label>Thickness</label>
-        <input type="range" id="thickness" min="0.5" max="4" step="0.5" value="1.5">
+<button id="toggle-btn">&#8249;</button>
+
+<div id="panel">
+    <div class="panel-content">
+        <div class="panel-header">
+            <a href="index.html" class="back-link">← Index</a>
+            <span class="panel-title">Controls</span>
+        </div>
+
+        <div class="row">
+            <label>Line Color</label>
+            <div class="flex-row">
+                <input type="color" id="color" value="#ffffff">
+                <span class="color-hint">Hue of all lines</span>
+            </div>
+        </div>
+
+        <div class="row">
+            <label>Glow Intensity <span class="val" id="glow-val">0</span></label>
+            <input type="range" id="glowIntensity" min="0" max="20" value="0">
+        </div>
+
+        <hr class="sep">
+
+        <div class="row">
+            <label>Flow Complexity <span class="val" id="zoom-val">500</span></label>
+            <input type="range" id="zoom" min="100" max="1000" value="500">
+        </div>
+
+        <div class="row">
+            <label>Line Count <span class="val" id="count-val">80</span></label>
+            <input type="range" id="count" min="20" max="200" value="80">
+        </div>
+
+        <div class="row">
+            <label>Morph Speed <span class="val" id="speed-val">10</span></label>
+            <input type="range" id="speed" min="1" max="50" value="10">
+        </div>
+
+        <div class="row">
+            <label>Thickness <span class="val" id="thick-val">1.5</span></label>
+            <input type="range" id="thickness" min="0.5" max="4" step="0.5" value="1.5">
+        </div>
+
+        <hr class="sep">
+
+        <div class="row">
+            <label>Warp Amount <span class="val" id="warp-val">0.6</span></label>
+            <input type="range" id="warp" min="0.1" max="1.5" step="0.05" value="0.6">
+        </div>
+
+        <div class="row">
+            <label>Trail Persistence <span class="val" id="trail-val">0</span></label>
+            <input type="range" id="trail" min="0" max="90" value="0">
+        </div>
     </div>
 </div>
 
@@ -48,66 +156,87 @@
     const simplex = new SimplexNoise();
 
     const gui = {
-        zoom: document.getElementById('zoom'),
-        count: document.getElementById('count'),
-        speed: document.getElementById('speed'),
-        thickness: document.getElementById('thickness')
+        zoom:      document.getElementById('zoom'),
+        count:     document.getElementById('count'),
+        speed:     document.getElementById('speed'),
+        thickness: document.getElementById('thickness'),
+        color:     document.getElementById('color'),
+        glow:      document.getElementById('glowIntensity'),
+        warp:      document.getElementById('warp'),
+        trail:     document.getElementById('trail'),
     };
 
-    let width, height;
-    let time = 0;
+    // Live value readouts
+    [['zoom','zoom-val'],['count','count-val'],['speed','speed-val'],
+     ['thickness','thick-val'],['glowIntensity','glow-val'],
+     ['warp','warp-val'],['trail','trail-val']
+    ].forEach(([id, valId]) => {
+        document.getElementById(id).addEventListener('input', e => {
+            document.getElementById(valId).textContent = e.target.value;
+        });
+    });
+
+    // Panel toggle
+    const panel = document.getElementById('panel');
+    const toggleBtn = document.getElementById('toggle-btn');
+    toggleBtn.addEventListener('click', () => {
+        const open = panel.classList.toggle('open');
+        toggleBtn.classList.toggle('open', open);
+        toggleBtn.innerHTML = open ? '&#8250;' : '&#8249;';
+    });
+
+    let width, height, time = 0;
 
     function resize() {
         width = canvas.width = window.innerWidth;
         height = canvas.height = window.innerHeight;
     }
 
-    // Mathematical function to draw a smooth curve through points
     function drawSmoothPath(points) {
         if (points.length < 3) return;
         ctx.beginPath();
         ctx.moveTo(points[0].x, points[0].y);
-
         for (let i = 1; i < points.length - 2; i++) {
             const xc = (points[i].x + points[i + 1].x) / 2;
             const yc = (points[i].y + points[i + 1].y) / 2;
             ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
         }
-        // curve through the last two points
         ctx.quadraticCurveTo(
-            points[points.length - 2].x,
-            points[points.length - 2].y,
-            points[points.length - 1].x,
-            points[points.length - 1].y
+            points[points.length - 2].x, points[points.length - 2].y,
+            points[points.length - 1].x, points[points.length - 1].y
         );
         ctx.stroke();
     }
 
     function animate() {
-        ctx.fillStyle = 'black';
+        const trailStrength = parseInt(gui.trail.value);
+        const bgAlpha = 1 - (trailStrength / 100) * 0.95;
+        ctx.fillStyle = `rgba(0,0,0,${bgAlpha})`;
         ctx.fillRect(0, 0, width, height);
 
-        ctx.strokeStyle = 'white';
+        const lineColor = gui.color.value;
+        ctx.strokeStyle = lineColor;
         ctx.lineWidth = gui.thickness.value;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
 
+        const glowAmt = parseInt(gui.glow.value);
+        ctx.shadowBlur = glowAmt;
+        ctx.shadowColor = glowAmt > 0 ? lineColor : 'transparent';
+
         const zoom = gui.zoom.value;
         const lineCount = gui.count.value;
         const morphSpeed = gui.speed.value * 0.0002;
+        const warpScale = parseFloat(gui.warp.value);
 
-        // Generate lines based on a grid, but warped by noise
         for (let i = 0; i < lineCount; i++) {
-            let points = [];
-            let xStart = (width / lineCount) * i;
+            const points = [];
+            const xStart = (width / lineCount) * i;
 
             for (let j = 0; j < 20; j++) {
-                let yPos = (height / 18) * j;
-
-                // The core secret: noise determines the X displacement
-                let noise = simplex.noise3D(xStart / zoom, yPos / zoom, time);
-                let xOffset = noise * (zoom * 0.6);
-
+                const yPos = (height / 18) * j;
+                const noise = simplex.noise3D(xStart / zoom, yPos / zoom, time);
+                const xOffset = noise * (zoom * warpScale);
                 points.push({ x: xStart + xOffset, y: yPos });
             }
             drawSmoothPath(points);
@@ -120,6 +249,16 @@
     window.addEventListener('resize', resize);
     resize();
     animate();
+
+    // Cycling rainbow accent for controls UI
+    let _accentHue = Math.random() * 360;
+    (function cycleAccent() {
+        _accentHue = (_accentHue + 0.18) % 360;
+        const accent = `hsl(${_accentHue | 0}, 70%, 62%)`;
+        document.documentElement.style.setProperty('--accent', accent);
+        document.querySelectorAll('input[type="range"]').forEach(el => el.style.accentColor = accent);
+        requestAnimationFrame(cycleAccent);
+    })();
 </script>
 </body>
 </html>

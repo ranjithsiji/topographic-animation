@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uprising Lines</title>
+    <style>
+        :root { --accent: #aaa; }
+        body { margin: 0; background: #050300; overflow: hidden; font-family: 'Inter', system-ui, sans-serif; }
+        canvas { display: block; }
+
+        #panel {
+            position: fixed;
+            right: 0; top: 0;
+            height: 100vh; width: 270px;
+            background: rgba(5, 3, 0, 0.95);
+            border-left: 1px solid var(--accent);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            transform: translateX(100%);
+            transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100; overflow-y: auto;
+        }
+        #panel.open { transform: translateX(0); }
+
+        #toggle-btn {
+            position: fixed; right: 0; top: 50%;
+            transform: translateY(-50%);
+            width: 28px; height: 60px;
+            background: rgba(5, 3, 0, 0.9);
+            border: 1px solid var(--accent); border-right: none;
+            border-radius: 8px 0 0 8px;
+            color: rgba(255,255,255,0.65);
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            z-index: 101; font-size: 20px; line-height: 1; padding: 0;
+            transition: right 0.32s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s;
+        }
+        #toggle-btn.open { right: 270px; }
+        #toggle-btn:hover { background: rgba(255,200,0,0.1); color: white; }
+
+        .panel-content { padding: 22px 20px; color: white; }
+        .panel-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 22px; padding-bottom: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .panel-title { font-size: 10px; text-transform: uppercase; letter-spacing: 2.5px; color: #666; }
+        .back-link { font-size: 11px; color: #666; text-decoration: none; transition: color 0.2s; }
+        .back-link:hover { color: #ccc; }
+        .row { margin-bottom: 18px; }
+        label {
+            display: flex; justify-content: space-between;
+            font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px;
+            margin-bottom: 7px; color: #666;
+        }
+        label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+        input[type="range"] { width: 100%; cursor: pointer; accent-color: var(--accent); }
+        .flex-row { display: flex; align-items: center; gap: 12px; }
+        input[type="color"] {
+            border: none; width: 38px; height: 26px;
+            cursor: pointer; background: none; border-radius: 5px; flex-shrink: 0;
+        }
+        .color-hint { font-size: 11px; color: #555; }
+        hr.sep { border: none; border-top: 1px solid rgba(255,255,255,0.05); margin: 18px 0; }
+    </style>
+</head>
+<body>
+
+<button id="toggle-btn">&#8249;</button>
+
+<div id="panel">
+    <div class="panel-content">
+        <div class="panel-header">
+            <a href="index.html" class="back-link">← Index</a>
+            <span class="panel-title">Controls</span>
+        </div>
+
+        <div class="row">
+            <label>Line Color</label>
+            <div class="flex-row">
+                <input type="color" id="color" value="#ffa820">
+                <span class="color-hint">Lines, glow & floor</span>
+            </div>
+        </div>
+
+        <div class="row">
+            <label>Floor Glow <span class="val" id="fglow-val">20</span></label>
+            <input type="range" id="floorGlow" min="0" max="40" value="20">
+        </div>
+
+        <div class="row">
+            <label>Dot Glow <span class="val" id="dglow-val">0</span></label>
+            <input type="range" id="dotGlow" min="0" max="25" value="0">
+        </div>
+
+        <hr class="sep">
+
+        <div class="row">
+            <label>Line Count <span class="val" id="lcount-val">55</span></label>
+            <input type="range" id="lineCount" min="10" max="130" value="55">
+        </div>
+
+        <div class="row">
+            <label>Rise Speed <span class="val" id="rspeed-val">5</span></label>
+            <input type="range" id="riseSpeed" min="1" max="18" value="5">
+        </div>
+
+        <div class="row">
+            <label>Max Height % <span class="val" id="mheight-val">68</span></label>
+            <input type="range" id="maxHeight" min="15" max="90" value="68">
+        </div>
+
+        <hr class="sep">
+
+        <div class="row">
+            <label>Bokeh Count <span class="val" id="bcount-val">45</span></label>
+            <input type="range" id="bokehCount" min="0" max="100" value="45">
+        </div>
+
+        <div class="row">
+            <label>Floor Density <span class="val" id="fdense-val">5</span></label>
+            <input type="range" id="floorDensity" min="1" max="10" value="5">
+        </div>
+    </div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx    = canvas.getContext('2d');
+    const simplex = new SimplexNoise();
+
+    const gui = {
+        color:        document.getElementById('color'),
+        floorGlow:    document.getElementById('floorGlow'),
+        dotGlow:      document.getElementById('dotGlow'),
+        lineCount:    document.getElementById('lineCount'),
+        riseSpeed:    document.getElementById('riseSpeed'),
+        maxHeight:    document.getElementById('maxHeight'),
+        bokehCount:   document.getElementById('bokehCount'),
+        floorDensity: document.getElementById('floorDensity'),
+    };
+
+    const FLOOR = 0.77; // center of the floor band as fraction of screen height
+
+    let width, height, time = 0;
+    let lines = [], bokehList = [], floorSparkles = [];
+
+    // ── helpers ─────────────────────────────────────────────────────────────
+
+    function hexRgb(hex) {
+        return [
+            parseInt(hex.slice(1,3), 16),
+            parseInt(hex.slice(3,5), 16),
+            parseInt(hex.slice(5,7), 16),
+        ];
+    }
+
+    // Floor y at any x, animated with simplex noise
+    function floorY(x) {
+        return height * FLOOR + simplex.noise3D(x / 280, 0, time * 0.25) * 22;
+    }
+
+    // ── floor sparkles ───────────────────────────────────────────────────────
+
+    function buildFloorSparkles() {
+        const density = parseInt(gui.floorDensity.value);
+        const spacing = Math.max(2, 10 - density);
+        floorSparkles = [];
+        for (let x = 0; x < width; x += spacing) {
+            floorSparkles.push({
+                x:       x + (Math.random() - 0.5) * spacing,
+                yOff:    Math.random() * 70,    // depth below wave crest
+                size:    Math.random() * 1.8 + 0.3,
+                alpha:   Math.random() * 0.75 + 0.2,
+                phase:   Math.random() * Math.PI * 2,
+            });
+        }
+    }
+
+    function drawFloorSparkles(r, g, b) {
+        const cx = width / 2;
+        const baseY = height * FLOOR;
+        floorSparkles.forEach(sp => {
+            const ny = simplex.noise3D(sp.x / 180, 50, time * 0.4) * 14;
+            const py = baseY + sp.yOff + ny;
+            if (py > height || py < baseY - 30) return;
+
+            const distFrac = Math.abs(sp.x - cx) / (width * 0.6);
+            const bright   = Math.max(0, 1 - distFrac * 0.65);
+            const twinkle  = 0.55 + 0.45 * Math.sin(time * 4 + sp.phase);
+
+            ctx.beginPath();
+            ctx.arc(sp.x, py, sp.size, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(${r},${g},${Math.floor(b * 0.25)},${(sp.alpha * bright * twinkle).toFixed(3)})`;
+            ctx.fill();
+        });
+    }
+
+    // ── floor wave ───────────────────────────────────────────────────────────
+
+    function drawFloor(r, g, b) {
+        const cx    = width / 2;
+        const baseY = height * FLOOR;
+        const glowAmt = parseInt(gui.floorGlow.value);
+
+        // 3 wave layers, back to front
+        for (let layer = 2; layer >= 0; layer--) {
+            const yShift = layer * 14;
+            const amp    = 18 + layer * 7;
+            const freq   = 0.0035 - layer * 0.0005;
+            const la     = 0.28 + layer * 0.14;
+
+            ctx.beginPath();
+            ctx.moveTo(0, height);
+            for (let x = 0; x <= width; x += 5) {
+                const n = simplex.noise3D(x * freq + layer * 12, 0, time * 0.3);
+                ctx.lineTo(x, baseY + yShift + n * amp);
+            }
+            ctx.lineTo(width, height);
+            ctx.closePath();
+
+            const fg = ctx.createLinearGradient(0, baseY - amp, 0, height);
+            fg.addColorStop(0,   `rgba(${r},${Math.floor(g * 0.45)},0,${la * 0.5})`);
+            fg.addColorStop(0.4, `rgba(${Math.floor(r * 0.75)},${Math.floor(g * 0.28)},0,${la})`);
+            fg.addColorStop(1,   `rgba(${Math.floor(r * 0.18)},${Math.floor(g * 0.07)},0,1)`);
+            ctx.fillStyle = fg;
+            ctx.fill();
+        }
+
+        drawFloorSparkles(r, g, b);
+
+        // Central lens glow on the floor
+        if (glowAmt > 0) {
+            const a  = glowAmt / 40;
+            const rx = width  * 0.38 * (glowAmt / 40);
+            const ry = height * 0.10 * (glowAmt / 40);
+            const rg = ctx.createRadialGradient(cx, baseY, 0, cx, baseY, Math.max(rx, ry));
+            rg.addColorStop(0,    `rgba(255,230,120,${a * 0.95})`);
+            rg.addColorStop(0.08, `rgba(${r},${g},30,${a * 0.75})`);
+            rg.addColorStop(0.3,  `rgba(${Math.floor(r * 0.6)},${Math.floor(g * 0.3)},0,${a * 0.25})`);
+            rg.addColorStop(1,    'rgba(0,0,0,0)');
+
+            ctx.save();
+            ctx.scale(1, ry / rx);
+            ctx.beginPath();
+            ctx.arc(cx, baseY * (rx / ry), rx, 0, Math.PI * 2);
+            ctx.fillStyle = rg;
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    // ── rising lines ─────────────────────────────────────────────────────────
+
+    class RisingLine {
+        constructor(init = false) { this.spawn(init); }
+
+        spawn(init = false) {
+            this.x        = (Math.random() * 1.12 - 0.06) * width;
+            const mhFrac  = parseInt(gui.maxHeight.value) / 100;
+            this.targetH  = (Math.random() * mhFrac * 0.8 + mhFrac * 0.15) * height;
+            this.currentH = 0;
+            this.state    = 'rising';
+            this.holdT    = 0;
+            this.maxHold  = 50 + Math.random() * 130;
+            this.alpha    = Math.random() * 0.55 + 0.4;
+            this.curAlpha = this.alpha;
+            this.spd      = (parseFloat(gui.riseSpeed.value) / 5) * (Math.random() * 3 + 1.2);
+            this.dotR     = Math.random() * 3.2 + 1;
+            this.lw       = Math.random() * 0.75 + 0.15;
+
+            if (init) {
+                this.currentH = Math.random() * this.targetH;
+                if (Math.random() < 0.35) { this.state = 'holding'; this.holdT = Math.random() * this.maxHold; }
+            }
+        }
+
+        update() {
+            if (this.state === 'rising') {
+                this.currentH = Math.min(this.currentH + this.spd, this.targetH);
+                if (this.currentH >= this.targetH) this.state = 'holding';
+            } else if (this.state === 'holding') {
+                if (++this.holdT > this.maxHold) this.state = 'fading';
+            } else {
+                this.curAlpha -= 0.007;
+                if (this.curAlpha <= 0) this.spawn(false);
+            }
+        }
+
+        draw(r, g, b) {
+            if (this.curAlpha <= 0 || this.currentH < 3) return;
+            const baseY = floorY(this.x);
+            const topY  = baseY - this.currentH;
+            const a     = this.curAlpha;
+
+            // Line with gradient: invisible at floor, solid at top
+            const grad = ctx.createLinearGradient(this.x, baseY, this.x, topY);
+            grad.addColorStop(0,    `rgba(${r},${g},${b},0)`);
+            grad.addColorStop(0.12, `rgba(${r},${g},${b},${a * 0.1})`);
+            grad.addColorStop(0.55, `rgba(${r},${g},${b},${a * 0.55})`);
+            grad.addColorStop(1,    `rgba(${r},${g},${b},${a})`);
+
+            ctx.beginPath();
+            ctx.moveTo(this.x, baseY);
+            ctx.lineTo(this.x, topY);
+            ctx.strokeStyle = grad;
+            ctx.lineWidth = this.lw;
+            ctx.stroke();
+
+            // Glowing dot — appears once line is nearly full height
+            const dotProgress = this.currentH / this.targetH;
+            if (dotProgress > 0.85 || this.state !== 'rising') {
+                const dotAlpha = a * Math.min((dotProgress - 0.85) / 0.15, 1);
+                const glowAmt  = parseInt(gui.dotGlow.value);
+                ctx.save();
+                if (glowAmt > 0) {
+                    ctx.shadowBlur  = glowAmt;
+                    ctx.shadowColor = `rgb(${r},${g},${b})`;
+                }
+                ctx.beginPath();
+                ctx.arc(this.x, topY, this.dotR, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255,255,255,${dotAlpha.toFixed(3)})`;
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+    }
+
+    // ── bokeh particles ──────────────────────────────────────────────────────
+
+    class Bokeh {
+        constructor(init = false) { this.spawn(init); }
+
+        spawn(init = false) {
+            this.x       = Math.random() * width;
+            this.y       = init ? Math.random() * height * 0.9 : height + 20;
+            // 15% chance of large bokeh blob, rest are tiny dots
+            this.large   = Math.random() < 0.15;
+            this.r       = this.large ? Math.random() * 9 + 5 : Math.random() * 3 + 0.8;
+            this.vy      = -(Math.random() * 0.45 + 0.08);
+            this.vx      = (Math.random() - 0.5) * 0.25;
+            this.alpha   = this.large ? Math.random() * 0.5 + 0.25 : Math.random() * 0.6 + 0.25;
+            this.phase   = Math.random() * Math.PI * 2;
+            this.isWhite = Math.random() < 0.22;
+        }
+
+        update() {
+            this.y += this.vy;
+            this.x += this.vx;
+            this.phase += 0.028;
+            if (this.y < -this.r * 3) this.spawn(false);
+        }
+
+        draw(r, g, b) {
+            const twinkle = 0.65 + 0.35 * Math.sin(this.phase);
+            const a = this.alpha * twinkle;
+            ctx.save();
+            if (this.large) {
+                ctx.shadowBlur  = this.r * 3;
+                ctx.shadowColor = this.isWhite ? 'rgba(255,255,255,0.7)' : `rgba(${r},${g},${b},0.7)`;
+            }
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+            ctx.fillStyle = this.isWhite
+                ? `rgba(255,255,255,${a.toFixed(3)})`
+                : `rgba(${r},${g},${b},${a.toFixed(3)})`;
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    // ── init ─────────────────────────────────────────────────────────────────
+
+    function syncCounts() {
+        const lc = parseInt(gui.lineCount.value);
+        const bc = parseInt(gui.bokehCount.value);
+        while (lines.length < lc) lines.push(new RisingLine(true));
+        while (lines.length > lc) lines.pop();
+        while (bokehList.length < bc) bokehList.push(new Bokeh(true));
+        while (bokehList.length > bc) bokehList.pop();
+    }
+
+    function resize() {
+        width  = canvas.width  = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+        buildFloorSparkles();
+        lines     = Array.from({ length: parseInt(gui.lineCount.value) }, () => new RisingLine(true));
+        bokehList = Array.from({ length: parseInt(gui.bokehCount.value) }, () => new Bokeh(true));
+    }
+
+    // ── animate ───────────────────────────────────────────────────────────────
+
+    function drawBackground(r, g, b) {
+        // Fade to very dark warm black
+        ctx.fillStyle = 'rgba(5, 3, 0, 0.38)';
+        ctx.fillRect(0, 0, width, height);
+
+        // Diffuse warm upwelling behind the floor centre
+        const cx = width / 2;
+        const cy = height * FLOOR;
+        const rg = ctx.createRadialGradient(cx, cy, 0, cx, cy, height * 0.65);
+        rg.addColorStop(0,   `rgba(${r},${Math.floor(g * 0.4)},0,0.10)`);
+        rg.addColorStop(0.4, `rgba(${Math.floor(r * 0.4)},${Math.floor(g * 0.12)},0,0.04)`);
+        rg.addColorStop(1,   'rgba(0,0,0,0)');
+        ctx.fillStyle = rg;
+        ctx.fillRect(0, 0, width, height);
+    }
+
+    function animate() {
+        const [r, g, b] = hexRgb(gui.color.value);
+
+        drawBackground(r, g, b);
+        drawFloor(r, g, b);
+
+        syncCounts();
+
+        // Rising lines
+        lines.forEach(l => { l.update(); l.draw(r, g, b); });
+
+        // Bokeh on top (floating atmosphere)
+        bokehList.forEach(bk => { bk.update(); bk.draw(r, g, b); });
+
+        time += 0.016;
+        requestAnimationFrame(animate);
+    }
+
+    // ── panel toggle ──────────────────────────────────────────────────────────
+
+    const panel     = document.getElementById('panel');
+    const toggleBtn = document.getElementById('toggle-btn');
+    toggleBtn.addEventListener('click', () => {
+        const open = panel.classList.toggle('open');
+        toggleBtn.classList.toggle('open', open);
+        toggleBtn.innerHTML = open ? '&#8250;' : '&#8249;';
+    });
+
+    // Live readouts
+    [['floorGlow','fglow-val'],['dotGlow','dglow-val'],['lineCount','lcount-val'],
+     ['riseSpeed','rspeed-val'],['maxHeight','mheight-val'],
+     ['bokehCount','bcount-val'],['floorDensity','fdense-val']
+    ].forEach(([id, vid]) => {
+        document.getElementById(id).addEventListener('input', e => {
+            document.getElementById(vid).textContent = e.target.value;
+        });
+    });
+
+    // Rebuild floor sparkles when density changes
+    document.getElementById('floorDensity').addEventListener('input', buildFloorSparkles);
+
+    window.addEventListener('resize', resize);
+    resize();
+    animate();
+
+    // Cycling rainbow accent for controls UI
+    let _accentHue = Math.random() * 360;
+    (function cycleAccent() {
+        _accentHue = (_accentHue + 0.18) % 360;
+        const accent = `hsl(${_accentHue | 0}, 70%, 62%)`;
+        document.documentElement.style.setProperty('--accent', accent);
+        document.querySelectorAll('input[type="range"]').forEach(el => el.style.accentColor = accent);
+        requestAnimationFrame(cycleAccent);
+    })();
+</script>
+</body>
+</html>

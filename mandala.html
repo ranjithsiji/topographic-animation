@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mandala Rotation</title>
+    <style>
+        :root { --accent: #aaa; }
+        body { margin: 0; background: #0d0904; overflow: hidden; font-family: 'Inter', system-ui, sans-serif; }
+        canvas { display: block; }
+
+        #panel {
+            position: fixed; right: 0; top: 0;
+            height: 100vh; width: 278px;
+            background: rgba(5, 2, 8, 0.97);
+            border-left: 1px solid var(--accent);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            transform: translateX(100%);
+            transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100; overflow-y: auto;
+        }
+        #panel.open { transform: translateX(0); }
+
+        #toggle-btn {
+            position: fixed; right: 0; top: 50%;
+            transform: translateY(-50%);
+            width: 28px; height: 60px;
+            background: rgba(5, 2, 8, 0.92);
+            border: 1px solid var(--accent); border-right: none;
+            border-radius: 8px 0 0 8px;
+            color: rgba(255,255,255,0.65);
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            z-index: 101; font-size: 20px; line-height: 1; padding: 0;
+            transition: right 0.32s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s;
+        }
+        #toggle-btn.open { right: 278px; }
+        #toggle-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+
+        .panel-content { padding: 22px 18px; color: white; }
+        .panel-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px; padding-bottom: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+        }
+        .panel-title { font-size: 10px; text-transform: uppercase; letter-spacing: 2.5px; color: #666; }
+        .back-link { font-size: 11px; color: #666; text-decoration: none; transition: color 0.2s; }
+        .back-link:hover { color: #ccc; }
+
+        .row { margin-bottom: 16px; }
+        label {
+            display: flex; justify-content: space-between;
+            font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px;
+            margin-bottom: 6px; color: #666;
+        }
+        label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+        input[type="range"] { width: 100%; cursor: pointer; accent-color: var(--accent); }
+
+        .cpair { display: flex; gap: 8px; }
+        .cpair-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        .cpair-item input[type="color"] { width: 100%; height: 30px; border: none; cursor: pointer; background: none; border-radius: 6px; }
+        .cpair-label { font-size: 9px; color: #555; text-transform: uppercase; letter-spacing: 0.8px; }
+
+        .ctrio { display: flex; gap: 6px; }
+        .ctrio-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        .ctrio-item input[type="color"] { width: 100%; height: 32px; border: none; cursor: pointer; background: none; border-radius: 6px; }
+        .ctrio-label { font-size: 9px; color: #555; text-transform: uppercase; letter-spacing: 0.6px; text-align: center; }
+
+        button.regen-btn {
+            width: 100%; padding: 9px;
+            background: rgba(255,255,255,0.07); color: #aaa;
+            border: 1px solid rgba(255,255,255,0.12); border-radius: 5px;
+            font-size: 10px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px;
+            transition: background 0.2s, color 0.2s; margin-bottom: 4px;
+        }
+        button.regen-btn:hover { background: rgba(255,255,255,0.16); color: white; }
+        hr.sep { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin: 18px 0; }
+    </style>
+</head>
+<body>
+
+<button id="toggle-btn">&#8249;</button>
+
+<div id="panel">
+    <div class="panel-content">
+        <div class="panel-header">
+            <a href="index.html" class="back-link">← Index</a>
+            <span class="panel-title">Controls</span>
+        </div>
+
+        <div class="row">
+            <label>Background &amp; Patches</label>
+            <div class="cpair">
+                <div class="cpair-item">
+                    <input type="color" id="bgColor" value="#0d0904">
+                    <span class="cpair-label">BG Color</span>
+                </div>
+                <div class="cpair-item">
+                    <input type="color" id="patchColor" value="#5a1f00">
+                    <span class="cpair-label">Patch Color</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <label>Patch Intensity <span class="val" id="patch-val">38</span></label>
+            <input type="range" id="patchIntensity" min="0" max="100" value="38">
+        </div>
+
+        <button class="regen-btn" onclick="generatePatches()">↺ Randomise Patches</button>
+
+        <hr class="sep">
+
+        <div class="row">
+            <label>Mandala Colors</label>
+            <div class="ctrio">
+                <div class="ctrio-item">
+                    <input type="color" id="color1" value="#d4a017">
+                    <span class="ctrio-label">Center</span>
+                </div>
+                <div class="ctrio-item">
+                    <input type="color" id="color2" value="#d4a017">
+                    <span class="ctrio-label">Top-Left</span>
+                </div>
+                <div class="ctrio-item">
+                    <input type="color" id="color3" value="#d4a017">
+                    <span class="ctrio-label">Bot-Right</span>
+                </div>
+            </div>
+        </div>
+
+        <hr class="sep">
+
+        <div class="row">
+            <label>Rotation Speed <span class="val" id="speed-val">2</span></label>
+            <input type="range" id="speed" min="0" max="20" value="2">
+        </div>
+
+        <div class="row">
+            <label>Symmetry <span class="val" id="sym-val">12</span></label>
+            <input type="range" id="symmetry" min="4" max="16" step="2" value="12">
+        </div>
+
+        <div class="row">
+            <label>Scale <span class="val" id="scale-val">85</span></label>
+            <input type="range" id="scale" min="20" max="100" value="85">
+        </div>
+
+        <div class="row">
+            <label>Line Width <span class="val" id="lw-val">1.5</span></label>
+            <input type="range" id="lineWidth" min="0.5" max="4.0" step="0.5" value="1.5">
+        </div>
+
+        <div class="row">
+            <label>Glow <span class="val" id="glow-val">0</span></label>
+            <input type="range" id="glow" min="0" max="50" value="0">
+        </div>
+
+        <div class="row">
+            <label>Center Hole Size <span class="val" id="hole-val">44</span></label>
+            <input type="range" id="holeSize" min="0" max="75" value="44">
+        </div>
+    </div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+    const canvas   = document.getElementById('canvas');
+    const ctx      = canvas.getContext('2d');
+    const TAU      = Math.PI * 2;
+
+    const patchCvs = document.createElement('canvas');
+    const patchCtx = patchCvs.getContext('2d');
+
+    const gui = {
+        bgColor:        document.getElementById('bgColor'),
+        patchColor:     document.getElementById('patchColor'),
+        patchIntensity: document.getElementById('patchIntensity'),
+        color1:         document.getElementById('color1'),
+        color2:         document.getElementById('color2'),
+        color3:         document.getElementById('color3'),
+        speed:          document.getElementById('speed'),
+        symmetry:       document.getElementById('symmetry'),
+        scale:          document.getElementById('scale'),
+        lineWidth:      document.getElementById('lineWidth'),
+        glow:           document.getElementById('glow'),
+        holeSize:       document.getElementById('holeSize'),
+    };
+
+    [['speed','speed-val'],['symmetry','sym-val'],['scale','scale-val'],
+     ['lineWidth','lw-val'],['glow','glow-val'],
+     ['patchIntensity','patch-val'],['holeSize','hole-val']
+    ].forEach(([id, vid]) => {
+        document.getElementById(id).addEventListener('input', e => {
+            document.getElementById(vid).textContent = e.target.value;
+        });
+    });
+
+    gui.patchColor.addEventListener('change', generatePatches);
+
+    let width, height;
+    let angleC = 0, angleTL = 0, angleBR = 0;
+
+    function hexToRgb(hex) {
+        return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
+    }
+
+    // ─── Background patches ──────────────────────────────────────────────────────
+
+    function generatePatches() {
+        patchCvs.width  = width;
+        patchCvs.height = height;
+        patchCtx.clearRect(0, 0, width, height);
+
+        const [pr, pg, pb] = hexToRgb(gui.patchColor.value);
+        const S = Math.min(width, height);
+
+        for (let i = 0; i < 32; i++) {
+            const x  = Math.random() * width;
+            const y  = Math.random() * height;
+            const r  = S * (0.09 + Math.random() * 0.26);
+            const sx = 0.40 + Math.random() * 1.70;
+            const sy = 0.40 + Math.random() * 1.70;
+            const a  = 0.15 + Math.random() * 0.35;
+
+            patchCtx.save();
+            patchCtx.translate(x, y);
+            patchCtx.scale(sx, sy);
+
+            const rg = patchCtx.createRadialGradient(0, 0, 0, 0, 0, r);
+            rg.addColorStop(0,    `rgba(${pr},${pg},${pb},${a.toFixed(3)})`);
+            rg.addColorStop(0.50, `rgba(${pr},${pg},${pb},${(a*0.38).toFixed(3)})`);
+            rg.addColorStop(1,    `rgba(${pr},${pg},${pb},0)`);
+
+            patchCtx.fillStyle = rg;
+            patchCtx.beginPath();
+            patchCtx.arc(0, 0, r, 0, TAU);
+            patchCtx.fill();
+            patchCtx.restore();
+        }
+    }
+
+    // ─── Mandala drawing ─────────────────────────────────────────────────────────
+
+    function drawMandala(cx, cy, R, hexCol, rot) {
+        const N    = parseInt(gui.symmetry.value);
+        const lw   = parseFloat(gui.lineWidth.value);
+        const glw  = parseInt(gui.glow.value);
+        const hole = parseInt(gui.holeSize.value) / 100;
+        const [cr, cg, cb] = hexToRgb(hexCol);
+        const [br, bg_, bb] = hexToRgb(gui.bgColor.value);
+        const c  = (a) => `rgba(${cr},${cg},${cb},${a})`;
+        const bgc = () => gui.bgColor.value;
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(rot);
+
+        // ── Apply glow ──
+        if (glw > 0) { ctx.shadowBlur = glw * 1.6; ctx.shadowColor = hexCol; }
+
+        // ── 1. Outer sharp-pointed tips ──
+        // Narrow diamond/lance shapes that stick out past the outer ring
+        for (let i = 0; i < N; i++) {
+            ctx.save();
+            ctx.rotate((i / N) * TAU);
+
+            const tipR  = R * 0.98;
+            const baseR = R * 0.79;
+            const tipW  = R * 0.052;
+
+            ctx.strokeStyle = c(1.0);
+            ctx.lineWidth   = lw * 1.1;
+            ctx.beginPath();
+            ctx.moveTo(0, -baseR);
+            ctx.bezierCurveTo( tipW, -(baseR + (tipR-baseR)*0.38),
+                               tipW*0.32, -tipR*0.985, 0, -tipR);
+            ctx.bezierCurveTo(-tipW*0.32, -tipR*0.985,
+                              -tipW, -(baseR + (tipR-baseR)*0.38), 0, -baseR);
+            ctx.closePath();
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // ── 2. Outer scallop domes (between tips) ──
+        for (let i = 0; i < N; i++) {
+            ctx.save();
+            ctx.rotate(((i + 0.5) / N) * TAU);
+
+            const dCx = 0;
+            const dCy = -(R * 0.855);
+            const dR  = R * 0.062;
+
+            ctx.strokeStyle = c(0.88);
+            ctx.lineWidth   = lw * 1.0;
+            ctx.beginPath();
+            ctx.arc(dCx, dCy, dR, Math.PI, 0);  // dome facing outward
+            ctx.stroke();
+
+            // Small inner arc detail inside the dome
+            ctx.strokeStyle = c(0.55);
+            ctx.lineWidth   = lw * 0.7;
+            ctx.beginPath();
+            ctx.arc(dCx, dCy + dR*0.15, dR * 0.52, Math.PI*0.15, Math.PI*0.85);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // ── 3. Outer thick ring ──
+        ctx.strokeStyle = c(1.0);
+        ctx.lineWidth   = lw * 3.2;
+        ctx.beginPath(); ctx.arc(0, 0, R*0.775, 0, TAU); ctx.stroke();
+
+        ctx.strokeStyle = c(0.60);
+        ctx.lineWidth   = lw * 0.8;
+        ctx.beginPath(); ctx.arc(0, 0, R*0.810, 0, TAU); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, 0, R*0.740, 0, TAU); ctx.stroke();
+
+        // ── 4. Ornate band (between outer and inner ring) ──
+        // Draw elements per N segment
+        const outerBandR = R * 0.720;
+        const innerBandR = R * 0.510;
+        const bandH      = outerBandR - innerBandR;
+        const midBandR   = (outerBandR + innerBandR) * 0.5;
+
+        for (let i = 0; i < N; i++) {
+            ctx.save();
+            ctx.rotate((i / N) * TAU);
+
+            // Top dome (faces outward at top of band)
+            ctx.strokeStyle = c(0.82);
+            ctx.lineWidth   = lw * 0.95;
+            const tdR = R * 0.042;
+            ctx.beginPath();
+            ctx.arc(0, -(outerBandR - tdR*0.55), tdR, Math.PI, 0);
+            ctx.stroke();
+
+            // Inner arc detail inside top dome
+            ctx.strokeStyle = c(0.50);
+            ctx.lineWidth   = lw * 0.65;
+            ctx.beginPath();
+            ctx.arc(0, -(outerBandR - tdR*0.55), tdR*0.52, Math.PI*0.15, Math.PI*0.85);
+            ctx.stroke();
+
+            // Left scroll / volute
+            const slx = -R * 0.068;
+            const sly = -(midBandR + bandH * 0.07);
+            const sr  = R * 0.036;
+
+            ctx.strokeStyle = c(0.88);
+            ctx.lineWidth   = lw;
+            // Outer arc of scroll (open on right side)
+            ctx.beginPath();
+            ctx.arc(slx, sly, sr, Math.PI * 0.20, Math.PI * 1.55);
+            ctx.stroke();
+            // Inner loop
+            ctx.beginPath();
+            ctx.arc(slx + sr*0.44, sly - sr*0.18, sr * 0.46, Math.PI * 0.90, Math.PI * (-0.18));
+            ctx.stroke();
+            // Tiny dot at centre of scroll
+            ctx.fillStyle = c(0.90);
+            ctx.beginPath();
+            ctx.arc(slx + sr*0.48, sly - sr*0.22, sr * 0.12, 0, TAU);
+            ctx.fill();
+
+            // Right scroll (mirrored)
+            const srx = R * 0.068;
+            ctx.strokeStyle = c(0.88);
+            ctx.lineWidth   = lw;
+            ctx.beginPath();
+            ctx.arc(srx, sly, sr, Math.PI * (-0.55), Math.PI * 0.80);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(srx - sr*0.44, sly - sr*0.18, sr * 0.46, Math.PI * 1.18, Math.PI * 2.10);
+            ctx.stroke();
+            ctx.fillStyle = c(0.90);
+            ctx.beginPath();
+            ctx.arc(srx - sr*0.48, sly - sr*0.22, sr * 0.12, 0, TAU);
+            ctx.fill();
+
+            // Central lotus / fleur-de-lis element
+            const ely   = -(midBandR - bandH * 0.02);
+            const elSize = R * 0.050;
+            ctx.strokeStyle = c(0.92);
+            ctx.lineWidth   = lw * 0.9;
+            // Left petal
+            ctx.beginPath();
+            ctx.moveTo(0, -(innerBandR + bandH*0.12));
+            ctx.bezierCurveTo(-elSize*0.85, -(innerBandR + bandH*0.30),
+                              -elSize*0.60, -(innerBandR + bandH*0.60),
+                              0,           -(innerBandR + bandH*0.72));
+            ctx.stroke();
+            // Right petal
+            ctx.beginPath();
+            ctx.moveTo(0, -(innerBandR + bandH*0.12));
+            ctx.bezierCurveTo( elSize*0.85, -(innerBandR + bandH*0.30),
+                               elSize*0.60, -(innerBandR + bandH*0.60),
+                               0,           -(innerBandR + bandH*0.72));
+            ctx.stroke();
+            // Top cap arc
+            ctx.strokeStyle = c(0.80);
+            ctx.beginPath();
+            ctx.arc(0, -(innerBandR + bandH*0.80), elSize*0.32, Math.PI, 0);
+            ctx.stroke();
+            // Stem
+            ctx.strokeStyle = c(0.70);
+            ctx.lineWidth   = lw * 0.65;
+            ctx.beginPath();
+            ctx.moveTo(0, -(innerBandR + bandH*0.72));
+            ctx.lineTo(0, -(innerBandR + bandH*0.10));
+            ctx.stroke();
+
+            // Bottom dome (faces inward at base of band)
+            ctx.strokeStyle = c(0.75);
+            ctx.lineWidth   = lw * 0.85;
+            const bdR = R * 0.035;
+            ctx.beginPath();
+            ctx.arc(0, -(innerBandR + bdR*0.60), bdR, 0, Math.PI); // dome facing inward
+            ctx.stroke();
+            ctx.strokeStyle = c(0.45);
+            ctx.lineWidth   = lw * 0.60;
+            ctx.beginPath();
+            ctx.arc(0, -(innerBandR + bdR*0.60), bdR*0.52, Math.PI*0.15, Math.PI*0.85);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // Between-segment dividers in band
+        for (let i = 0; i < N; i++) {
+            ctx.save();
+            ctx.rotate(((i + 0.5) / N) * TAU);
+            // Small diamond at band mid-height
+            ctx.fillStyle = c(0.70);
+            ctx.lineWidth = lw * 0.7;
+            ctx.strokeStyle = c(0.80);
+            const dh = R * 0.028;
+            ctx.beginPath();
+            ctx.moveTo(0,    -midBandR - dh);
+            ctx.lineTo( dh*0.45, -midBandR);
+            ctx.lineTo(0,    -midBandR + dh);
+            ctx.lineTo(-dh*0.45, -midBandR);
+            ctx.closePath();
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // ── 5. Inner thick ring ──
+        ctx.strokeStyle = c(1.0);
+        ctx.lineWidth   = lw * 3.2;
+        ctx.beginPath(); ctx.arc(0, 0, R*0.500, 0, TAU); ctx.stroke();
+
+        ctx.strokeStyle = c(0.60);
+        ctx.lineWidth   = lw * 0.8;
+        ctx.beginPath(); ctx.arc(0, 0, R*0.535, 0, TAU); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, 0, R*0.465, 0, TAU); ctx.stroke();
+
+        // ── 6. Hollow dark center ──
+        // Turn off glow before filling so the center is truly dark
+        ctx.shadowBlur = 0;
+
+        const holeR = R * hole;
+        ctx.fillStyle = bgc();
+        ctx.beginPath(); ctx.arc(0, 0, holeR, 0, TAU); ctx.fill();
+
+        // Inner-edge warm glow on the center hole boundary
+        if (glw > 0 && holeR > 0) {
+            const innerGlow = ctx.createRadialGradient(0, 0, holeR * 0.72, 0, 0, holeR);
+            innerGlow.addColorStop(0, 'rgba(0,0,0,0)');
+            innerGlow.addColorStop(1, `rgba(${cr},${cg},${cb},0.14)`);
+            ctx.fillStyle = innerGlow;
+            ctx.beginPath(); ctx.arc(0, 0, holeR, 0, TAU); ctx.fill();
+        }
+
+        ctx.shadowBlur = 0;
+        ctx.restore();
+    }
+
+    // ─── Background ──────────────────────────────────────────────────────────────
+
+    function drawBackground() {
+        ctx.fillStyle = gui.bgColor.value;
+        ctx.fillRect(0, 0, width, height);
+
+        const intensity = parseInt(gui.patchIntensity.value) / 100;
+        if (intensity > 0) {
+            ctx.save();
+            ctx.globalAlpha = intensity;
+            ctx.drawImage(patchCvs, 0, 0);
+            ctx.restore();
+        }
+
+        // Soft vignette
+        const vg = ctx.createRadialGradient(
+            width/2, height/2, 0,
+            width/2, height/2, Math.max(width, height) * 0.70
+        );
+        vg.addColorStop(0, 'rgba(255,255,255,0.02)');
+        vg.addColorStop(1, 'rgba(0,0,0,0.55)');
+        ctx.fillStyle = vg;
+        ctx.fillRect(0, 0, width, height);
+    }
+
+    // ─── Animation ───────────────────────────────────────────────────────────────
+
+    function animate() {
+        drawBackground();
+
+        const spd = parseInt(gui.speed.value) * 0.0012;
+        angleC  += spd;
+        angleTL -= spd * 0.78;
+        angleBR -= spd * 1.22;
+
+        const scl = parseInt(gui.scale.value) / 100;
+        const R   = Math.min(width, height) * 0.43 * scl;
+
+        // Corner mandalas drawn first (behind center)
+        drawMandala(0,     0,      R * 0.82, gui.color2.value, angleTL);
+        drawMandala(width, height, R * 0.65, gui.color3.value, angleBR);
+
+        // Center mandala on top
+        drawMandala(width/2, height/2, R, gui.color1.value, angleC);
+
+        requestAnimationFrame(animate);
+    }
+
+    // ─── Resize ──────────────────────────────────────────────────────────────────
+
+    function resize() {
+        width  = canvas.width  = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+        generatePatches();
+    }
+
+    // ─── Panel toggle ─────────────────────────────────────────────────────────────
+
+    const panel     = document.getElementById('panel');
+    const toggleBtn = document.getElementById('toggle-btn');
+    toggleBtn.addEventListener('click', () => {
+        const open = panel.classList.toggle('open');
+        toggleBtn.classList.toggle('open', open);
+        toggleBtn.innerHTML = open ? '&#8250;' : '&#8249;';
+    });
+
+    window.addEventListener('resize', resize);
+    resize();
+    animate();
+
+    // Cycling rainbow accent
+    let _accentHue = Math.random() * 360;
+    (function cycleAccent() {
+        _accentHue = (_accentHue + 0.18) % 360;
+        const accent = `hsl(${_accentHue | 0}, 70%, 62%)`;
+        document.documentElement.style.setProperty('--accent', accent);
+        document.querySelectorAll('input[type="range"]').forEach(el => el.style.accentColor = accent);
+        requestAnimationFrame(cycleAccent);
+    })();
+</script>
+</body>
+</html>

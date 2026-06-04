@@ -3,185 +3,313 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Matrix Assembly - High Legibility</title>
+    <title>Matrix Assembly</title>
     <style>
+        :root { --accent: #aaa; }
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', Courier, monospace; }
         canvas { display: block; }
-        
-        #ui {
-            position: absolute; top: 20px; left: 20px; background: rgba(0, 0, 0, 0.9);
-            padding: 20px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1);
-            color: white; width: 250px; backdrop-filter: blur(15px);
-            z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
 
-        .row { margin-bottom: 15px; }
-        label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 6px; color: #888; }
-        
-        input[type="text"] { 
-            width: 100%; background: #111; color: #fff; border: 1px solid #333; 
-            padding: 8px; border-radius: 4px; box-sizing: border-box; text-transform: uppercase;
-            outline: none; font-weight: bold; margin-bottom: 10px;
+        #panel {
+            position: fixed;
+            right: 0; top: 0;
+            height: 100vh;
+            width: 280px;
+            background: rgba(5, 5, 5, 0.95);
+            border-left: 1px solid var(--accent);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            transform: translateX(100%);
+            transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100;
+            overflow-y: auto;
         }
-        
-        input[type="range"] { width: 100%; cursor: pointer; accent-color: #fff; }
-        .flex-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-        input[type="color"] { border: none; width: 40px; height: 25px; cursor: pointer; background: none; }
-        
+        #panel.open { transform: translateX(0); }
+
+        #toggle-btn {
+            position: fixed;
+            right: 0; top: 50%;
+            transform: translateY(-50%);
+            width: 28px; height: 60px;
+            background: rgba(12, 12, 12, 0.88);
+            border: 1px solid var(--accent);
+            border-right: none;
+            border-radius: 8px 0 0 8px;
+            color: rgba(255,255,255,0.65);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 101;
+            font-size: 20px;
+            line-height: 1;
+            padding: 0;
+            transition: right 0.32s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s, color 0.2s;
+        }
+        #toggle-btn.open { right: 280px; }
+        #toggle-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+
+        .panel-content { padding: 22px 20px; color: white; }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 22px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+        }
+        .panel-title { font-size: 10px; text-transform: uppercase; letter-spacing: 2.5px; color: #666; }
+        .back-link { font-size: 11px; color: #666; text-decoration: none; transition: color 0.2s; }
+        .back-link:hover { color: #ccc; }
+
+        .row { margin-bottom: 16px; }
+        label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            margin-bottom: 6px;
+            color: #666;
+        }
+        label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+
+        input[type="range"] { width: 100%; cursor: pointer; accent-color: var(--accent); }
+        input[type="text"] {
+            width: 100%;
+            background: #111;
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 8px 10px;
+            border-radius: 5px;
+            box-sizing: border-box;
+            text-transform: uppercase;
+            outline: none;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            margin-bottom: 10px;
+        }
+        .flex-row { display: flex; align-items: center; gap: 12px; }
+        input[type="color"] {
+            border: none; width: 38px; height: 26px;
+            cursor: pointer; background: none;
+            border-radius: 5px; flex-shrink: 0;
+        }
+        input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: #fff; flex-shrink: 0; }
+        .check-label { font-size: 11px; color: #666; }
+
         button {
-            width: 100%; padding: 10px; background: #fff; color: #000; 
-            border: none; border-radius: 4px; font-weight: bold; cursor: pointer;
+            width: 100%; padding: 10px;
+            background: #fff; color: #000;
+            border: none; border-radius: 5px;
+            font-weight: bold; cursor: pointer;
             text-transform: uppercase; font-size: 11px;
+            letter-spacing: 1px;
+            transition: background 0.2s;
         }
         button:hover { background: #00ff41; }
+
+        hr.sep { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin: 18px 0; }
     </style>
 </head>
 <body>
 
-<div id="ui">
-    <div class="row">
-        <label>Target Word</label>
-        <input type="text" id="textInput" value="GEMINI" maxlength="20">
-        <button onclick="init()">Reassemble</button>
-    </div>
+<button id="toggle-btn">&#8249;</button>
 
-    <div class="row">
-        <label>Theme Color & Glow</label>
-        <div class="flex-row">
-            <input type="color" id="color" value="#00ff41">
+<div id="panel">
+    <div class="panel-content">
+        <div class="panel-header">
+            <a href="index.html" class="back-link">← Index</a>
+            <span class="panel-title">Controls</span>
+        </div>
+
+        <div class="row">
+            <label>Target Word</label>
+            <input type="text" id="textInput" value="GEMINI" maxlength="20">
+            <button onclick="init()">Reassemble</button>
+        </div>
+
+        <hr class="sep">
+
+        <div class="row">
+            <label>Font Size <span class="val" id="size-val">32</span></label>
+            <input type="range" id="fontSize" min="12" max="70" value="32">
+        </div>
+
+        <div class="row">
+            <label>Letter Spacing <span class="val" id="kern-val">1.6</span></label>
+            <input type="range" id="kerning" min="1.0" max="3.0" step="0.1" value="1.6">
+        </div>
+
+        <div class="row">
+            <label>Line Height <span class="val" id="lineh-val">1.3</span></label>
+            <input type="range" id="lineHeight" min="0.8" max="2.5" step="0.1" value="1.3">
+        </div>
+
+        <hr class="sep">
+
+        <div class="row">
+            <label>Color</label>
             <div class="flex-row">
-                <span style="font-size: 10px; color: #888;">GLOW</span>
-                <input type="checkbox" id="glowToggle">
+                <input type="color" id="color" value="#00ff41">
+                <div class="flex-row">
+                    <span class="check-label">Glow</span>
+                    <input type="checkbox" id="glowToggle">
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="row">
-        <label>Font Size</label>
-        <input type="range" id="fontSize" min="12" max="60" value="30">
-    </div>
+        <div class="row">
+            <label>Wobble Intensity <span class="val" id="wobble-val">0</span></label>
+            <input type="range" id="wobble" min="0" max="60" value="0">
+        </div>
 
-    <div class="row">
-        <label>Letter Spacing</label>
-        <input type="range" id="kerning" min="1.0" max="2.5" step="0.1" value="1.5">
-    </div>
-
-    <div class="row">
-        <label>Drop Speed</label>
-        <input type="range" id="speed" min="1" max="10" value="4">
+        <div class="row">
+            <label>Drop Speed <span class="val" id="speed-val">4</span></label>
+            <input type="range" id="speed" min="1" max="10" value="4">
+        </div>
     </div>
 </div>
 
 <canvas id="canvas"></canvas>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
+
 <script>
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
+    const simplex = new SimplexNoise();
 
     const gui = {
-        text: document.getElementById('textInput'),
-        color: document.getElementById('color'),
-        glow: document.getElementById('glowToggle'),
-        size: document.getElementById('fontSize'),
-        kern: document.getElementById('kerning'),
-        speed: document.getElementById('speed')
+        text:   document.getElementById('textInput'),
+        color:  document.getElementById('color'),
+        glow:   document.getElementById('glowToggle'),
+        size:   document.getElementById('fontSize'),
+        kern:   document.getElementById('kerning'),
+        lineH:  document.getElementById('lineHeight'),
+        speed:  document.getElementById('speed'),
+        wobble: document.getElementById('wobble'),
     };
 
-    let width, height, columns;
-    let drops = [];
-    let lockedStatus = [];
+    // Live value readouts
+    [['fontSize','size-val'],['kerning','kern-val'],['lineHeight','lineh-val'],
+     ['wobble','wobble-val'],['speed','speed-val']
+    ].forEach(([id, valId]) => {
+        document.getElementById(id).addEventListener('input', e => {
+            document.getElementById(valId).textContent = e.target.value;
+        });
+    });
+
+    // Panel toggle
+    const panel = document.getElementById('panel');
+    const toggleBtn = document.getElementById('toggle-btn');
+    toggleBtn.addEventListener('click', () => {
+        const open = panel.classList.toggle('open');
+        toggleBtn.classList.toggle('open', open);
+        toggleBtn.innerHTML = open ? '&#8250;' : '&#8249;';
+    });
+
+    let width, height, columns, z = 0;
+    let drops = [], lockedStatus = [];
     const characters = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789";
 
     function init() {
         width = canvas.width = window.innerWidth;
         height = canvas.height = window.innerHeight;
-        
+
         const fontSize = parseInt(gui.size.value);
         const kerning = parseFloat(gui.kern.value);
-        const colWidth = fontSize * kerning; // Each column is now wider than the font
-        
+        const colWidth = fontSize * kerning;
+
         columns = Math.floor(width / colWidth);
-        
+
         const word = gui.text.value.toUpperCase();
-        // Shift word to center columns
         const startCol = Math.floor((columns - word.length) / 2);
-        
+
         drops = [];
         lockedStatus = [];
 
         for (let i = 0; i < columns; i++) {
             drops[i] = Math.random() * -100;
-            
             let targetChar = null;
             if (i >= startCol && i < startCol + word.length) {
                 targetChar = word[i - startCol];
             }
-
-            lockedStatus[i] = {
-                isTarget: targetChar !== null,
-                char: targetChar,
-                locked: false
-            };
+            lockedStatus[i] = { isTarget: targetChar !== null, char: targetChar, locked: false };
         }
     }
 
     function draw() {
-        ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
         ctx.fillRect(0, 0, width, height);
 
         const fontSize = parseInt(gui.size.value);
         const kerning = parseFloat(gui.kern.value);
+        const lineH = parseFloat(gui.lineH.value);
         const colWidth = fontSize * kerning;
+        const vertSpacing = fontSize * lineH;
         const themeColor = gui.color.value;
         const speed = parseInt(gui.speed.value) * 0.05;
-        const centerY = Math.floor((height / fontSize) / 2);
+        const wobbleIntensity = parseInt(gui.wobble.value);
+        const centerY_coord = height / 2;
 
         ctx.font = `bold ${fontSize}px monospace`;
-        ctx.textAlign = "center"; // Align within each column
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
 
         for (let i = 0; i < columns; i++) {
             const status = lockedStatus[i];
-            const x = i * colWidth + (colWidth / 2); // Center of the wide column
-            
+            const baseX = i * colWidth + (colWidth / 2);
+
             if (status.locked) {
                 if (gui.glow.checked) {
-                    ctx.shadowBlur = 10;
-                    ctx.shadowColor = "#fff";
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = '#fff';
                 } else {
                     ctx.shadowBlur = 0;
                 }
-                
-                ctx.fillStyle = "#ffffff";
-                ctx.fillText(status.char, x, centerY * fontSize);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(status.char, baseX, centerY_coord);
                 ctx.shadowBlur = 0;
-                
             } else {
                 const char = characters[Math.floor(Math.random() * characters.length)];
-                const y = drops[i] * fontSize;
+                const y = drops[i] * vertSpacing;
+                const distanceToCenter = Math.abs(y - centerY_coord);
+                const stabilization = Math.min(distanceToCenter / (vertSpacing * 8), 1.0);
+                const noiseX = simplex.noise2D(i * 0.5, z) * wobbleIntensity * stabilization;
 
-                if (status.isTarget && Math.floor(drops[i]) >= centerY) {
+                if (status.isTarget && y >= centerY_coord) {
                     status.locked = true;
                 } else {
                     ctx.fillStyle = themeColor;
-                    ctx.fillText(char, x, y);
-                    
-                    if (y > height) {
-                        drops[i] = 0;
-                    }
+                    ctx.fillText(char, baseX + noiseX, y);
+                    if (y > height + vertSpacing) drops[i] = -5;
                     drops[i] += speed;
                 }
             }
         }
 
+        z += 0.04;
         requestAnimationFrame(draw);
     }
 
     gui.size.addEventListener('input', init);
     gui.kern.addEventListener('input', init);
+    gui.lineH.addEventListener('input', init);
     window.addEventListener('resize', init);
 
     init();
     draw();
+
+    // Cycling rainbow accent for controls UI
+    let _accentHue = Math.random() * 360;
+    (function cycleAccent() {
+        _accentHue = (_accentHue + 0.18) % 360;
+        const accent = `hsl(${_accentHue | 0}, 70%, 62%)`;
+        document.documentElement.style.setProperty('--accent', accent);
+        document.querySelectorAll('input[type="range"]').forEach(el => el.style.accentColor = accent);
+        requestAnimationFrame(cycleAccent);
+    })();
 </script>
 </body>
 </html>

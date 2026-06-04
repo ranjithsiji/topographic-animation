@@ -5,66 +5,154 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fluid Topography with Presets</title>
     <style>
+        :root { --accent: #aaa; }
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Inter', system-ui, sans-serif; }
         canvas { display: block; }
-        
-        #ui {
-            position: absolute; top: 20px; left: 20px; background: rgba(0, 0, 0, 0.85);
-            padding: 20px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1);
-            color: white; width: 240px; backdrop-filter: blur(15px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            max-height: 90vh; overflow-y: auto;
+
+        #panel {
+            position: fixed;
+            right: 0; top: 0;
+            height: 100vh;
+            width: 270px;
+            background: rgba(5, 5, 5, 0.93);
+            border-left: 1px solid var(--accent);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            transform: translateX(100%);
+            transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100;
+            overflow-y: auto;
         }
+        #panel.open { transform: translateX(0); }
 
-        .row { margin-bottom: 15px; }
-        label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 6px; color: #888; }
-        
-        select { width: 100%; padding: 8px; background: #222; color: white; border: 1px solid #444; border-radius: 4px; cursor: pointer; margin-bottom: 10px; }
-        input[type="range"] { width: 100%; cursor: pointer; accent-color: #fff; }
-        
-        .flex-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-        input[type="color"] { border: none; width: 40px; height: 25px; cursor: pointer; background: none; }
-        input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: #fff; }
+        #toggle-btn {
+            position: fixed;
+            right: 0; top: 50%;
+            transform: translateY(-50%);
+            width: 28px; height: 60px;
+            background: rgba(12, 12, 12, 0.88);
+            border: 1px solid var(--accent);
+            border-right: none;
+            border-radius: 8px 0 0 8px;
+            color: rgba(255,255,255,0.65);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 101;
+            font-size: 20px;
+            line-height: 1;
+            padding: 0;
+            transition: right 0.32s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s, color 0.2s;
+        }
+        #toggle-btn.open { right: 270px; }
+        #toggle-btn:hover { background: rgba(255,255,255,0.1); color: white; }
 
-        hr { border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 15px 0; }
+        .panel-content { padding: 22px 20px; color: white; }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 22px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+        }
+        .panel-title { font-size: 10px; text-transform: uppercase; letter-spacing: 2.5px; color: #666; }
+        .back-link { font-size: 11px; color: #666; text-decoration: none; transition: color 0.2s; }
+        .back-link:hover { color: #ccc; }
+
+        .row { margin-bottom: 18px; }
+        label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            margin-bottom: 7px;
+            color: #666;
+        }
+        label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+
+        input[type="range"] { width: 100%; cursor: pointer; accent-color: var(--accent); }
+        select {
+            width: 100%;
+            background: #151515;
+            color: white;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .flex-row { display: flex; align-items: center; gap: 12px; }
+        input[type="color"] {
+            border: none; width: 38px; height: 26px;
+            cursor: pointer; background: none;
+            border-radius: 5px; flex-shrink: 0;
+        }
+        .color-hint { font-size: 11px; color: #555; }
+
+        hr.sep { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin: 20px 0; }
     </style>
 </head>
 <body>
 
-<div id="ui">
-    <div class="row">
-        <label>Quick Presets</label>
-        <select id="presetSelect">
-            <option value="custom">-- Custom --</option>
-            <option value="deepSea">Deep Sea (Minimal)</option>
-            <option value="highlands">Highlands (Complex)</option>
-            <option value="neonFlow">Neon Flow (Glow)</option>
-        </select>
-    </div>
+<button id="toggle-btn">&#8249;</button>
 
-    <hr>
+<div id="panel">
+    <div class="panel-content">
+        <div class="panel-header">
+            <a href="index.html" class="back-link">← Index</a>
+            <span class="panel-title">Controls</span>
+        </div>
 
-    <div class="row">
-        <label>Line Color & Glow</label>
-        <div class="flex-row">
-            <input type="color" id="color" value="#ffffff">
+        <div class="row">
+            <label>Quick Presets</label>
+            <select id="presetSelect">
+                <option value="custom">— Custom —</option>
+                <option value="deepSea">Deep Sea (Minimal)</option>
+                <option value="highlands">Highlands (Complex)</option>
+                <option value="neonFlow">Neon Flow (Glow)</option>
+            </select>
+        </div>
+
+        <hr class="sep">
+
+        <div class="row">
+            <label>Line Color</label>
             <div class="flex-row">
-                <span style="font-size: 10px; color: #888;">GLOW</span>
-                <input type="checkbox" id="glowToggle" checked>
+                <input type="color" id="color" value="#ffffff">
+                <span class="color-hint">Hue of contours & glow</span>
             </div>
         </div>
-    </div>
-    <div class="row">
-        <label>Organic Zoom</label>
-        <input type="range" id="zoom" min="150" max="1000" value="500">
-    </div>
-    <div class="row">
-        <label>Contour Layers</label>
-        <input type="range" id="layers" min="2" max="15" value="6">
-    </div>
-    <div class="row">
-        <label>Morph Speed</label>
-        <input type="range" id="speed" min="0" max="50" value="10">
+
+        <div class="row">
+            <label>Glow Intensity <span class="val" id="glow-val">0</span></label>
+            <input type="range" id="glowIntensity" min="0" max="30" value="0">
+        </div>
+
+        <div class="row">
+            <label>Line Width <span class="val" id="width-val">1.8</span></label>
+            <input type="range" id="lineWidth" min="0.5" max="5" step="0.1" value="1.8">
+        </div>
+
+        <hr class="sep">
+
+        <div class="row">
+            <label>Organic Scale <span class="val" id="zoom-val">500</span></label>
+            <input type="range" id="zoom" min="150" max="1000" value="500">
+        </div>
+
+        <div class="row">
+            <label>Contour Layers <span class="val" id="layers-val">6</span></label>
+            <input type="range" id="layers" min="2" max="15" value="6">
+        </div>
+
+        <div class="row">
+            <label>Morph Speed <span class="val" id="speed-val">10</span></label>
+            <input type="range" id="speed" min="0" max="50" value="10">
+        </div>
     </div>
 </div>
 
@@ -78,44 +166,63 @@
     const simplex = new SimplexNoise();
 
     const gui = {
-        preset: document.getElementById('presetSelect'),
-        zoom: document.getElementById('zoom'),
-        layers: document.getElementById('layers'),
-        speed: document.getElementById('speed'),
-        color: document.getElementById('color'),
-        glow: document.getElementById('glowToggle')
+        preset:    document.getElementById('presetSelect'),
+        zoom:      document.getElementById('zoom'),
+        layers:    document.getElementById('layers'),
+        speed:     document.getElementById('speed'),
+        color:     document.getElementById('color'),
+        glow:      document.getElementById('glowIntensity'),
+        lineWidth: document.getElementById('lineWidth'),
     };
+
+    // Live value readouts
+    [['zoom','zoom-val'],['layers','layers-val'],['speed','speed-val'],
+     ['glowIntensity','glow-val'],['lineWidth','width-val']
+    ].forEach(([id, valId]) => {
+        document.getElementById(id).addEventListener('input', e => {
+            document.getElementById(valId).textContent = e.target.value;
+            gui.preset.value = 'custom';
+        });
+    });
 
     const presets = {
-        deepSea: { zoom: 800, layers: 3, speed: 5, color: "#ffffff", glow: false },
-        highlands: { zoom: 250, layers: 10, speed: 12, color: "#cccccc", glow: false },
-        neonFlow: { zoom: 450, layers: 5, speed: 25, color: "#00f2ff", glow: true }
+        deepSea:   { zoom: 800, layers: 3,  speed: 5,  color: '#00aaff', glow: 5,  lineWidth: 1.2 },
+        highlands: { zoom: 250, layers: 10, speed: 12, color: '#cccccc', glow: 0,  lineWidth: 1.0 },
+        neonFlow:  { zoom: 450, layers: 5,  speed: 25, color: '#00f2ff', glow: 20, lineWidth: 2.0 },
     };
 
-    let width, height;
-    let z = 0;
-    const gridSpacing = 16; 
+    function applyPreset(key) {
+        if (key === 'custom') return;
+        const p = presets[key];
+        gui.zoom.value = p.zoom;      document.getElementById('zoom-val').textContent = p.zoom;
+        gui.layers.value = p.layers;  document.getElementById('layers-val').textContent = p.layers;
+        gui.speed.value = p.speed;    document.getElementById('speed-val').textContent = p.speed;
+        gui.color.value = p.color;
+        gui.glow.value = p.glow;      document.getElementById('glow-val').textContent = p.glow;
+        gui.lineWidth.value = p.lineWidth; document.getElementById('width-val').textContent = p.lineWidth;
+    }
+
+    gui.preset.addEventListener('change', e => applyPreset(e.target.value));
+
+    // Panel toggle
+    const panel = document.getElementById('panel');
+    const toggleBtn = document.getElementById('toggle-btn');
+    toggleBtn.addEventListener('click', () => {
+        const open = panel.classList.toggle('open');
+        toggleBtn.classList.toggle('open', open);
+        toggleBtn.innerHTML = open ? '&#8250;' : '&#8249;';
+    });
+
+    let width, height, z = 0;
+    const gridSpacing = 16;
 
     function resize() {
         width = canvas.width = window.innerWidth;
         height = canvas.height = window.innerHeight;
     }
 
-    function applyPreset(key) {
-        if (key === 'custom') return;
-        const p = presets[key];
-        gui.zoom.value = p.zoom;
-        gui.layers.value = p.layers;
-        gui.speed.value = p.speed;
-        gui.color.value = p.color;
-        gui.glow.checked = p.glow;
-    }
-
-    gui.preset.addEventListener('change', (e) => applyPreset(e.target.value));
-
     function getVal(x, y) {
-        const s = gui.zoom.value;
-        return simplex.noise3D(x / s, y / s, z);
+        return simplex.noise3D(x / gui.zoom.value, y / gui.zoom.value, z);
     }
 
     function animate() {
@@ -124,15 +231,12 @@
 
         const lineColor = gui.color.value;
         ctx.strokeStyle = lineColor;
-        ctx.lineWidth = 1.8;
+        ctx.lineWidth = parseFloat(gui.lineWidth.value);
         ctx.lineCap = 'round';
 
-        if (gui.glow.checked) {
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = lineColor;
-        } else {
-            ctx.shadowBlur = 0;
-        }
+        const glowAmt = parseInt(gui.glow.value);
+        ctx.shadowBlur = glowAmt;
+        ctx.shadowColor = glowAmt > 0 ? lineColor : 'transparent';
 
         const numLayers = parseInt(gui.layers.value);
 
@@ -147,17 +251,18 @@
                     const v3 = getVal(x + gridSpacing, y + gridSpacing);
                     const v4 = getVal(x, y + gridSpacing);
 
-                    const getPos = (p1, p2, val1, val2) => p1 + (gridSpacing * (threshold - val1) / (val2 - val1));
+                    const getPos = (p1, p2, val1, val2) =>
+                        p1 + (gridSpacing * (threshold - val1) / (val2 - val1));
 
-                    let points = [];
-                    if ((v1 > threshold) !== (v2 > threshold)) points.push({x: getPos(x, x+gridSpacing, v1, v2), y: y});
-                    if ((v2 > threshold) !== (v3 > threshold)) points.push({x: x+gridSpacing, y: getPos(y, y+gridSpacing, v2, v3)});
-                    if ((v3 > threshold) !== (v4 > threshold)) points.push({x: getPos(x, x+gridSpacing, v4, v3), y: y+gridSpacing});
-                    if ((v4 > threshold) !== (v1 > threshold)) points.push({x: x, y: getPos(y, y+gridSpacing, v1, v4)});
+                    const pts = [];
+                    if ((v1 > threshold) !== (v2 > threshold)) pts.push({x: getPos(x, x+gridSpacing, v1, v2), y});
+                    if ((v2 > threshold) !== (v3 > threshold)) pts.push({x: x+gridSpacing, y: getPos(y, y+gridSpacing, v2, v3)});
+                    if ((v3 > threshold) !== (v4 > threshold)) pts.push({x: getPos(x, x+gridSpacing, v4, v3), y: y+gridSpacing});
+                    if ((v4 > threshold) !== (v1 > threshold)) pts.push({x, y: getPos(y, y+gridSpacing, v1, v4)});
 
-                    if (points.length >= 2) {
-                        ctx.moveTo(points[0].x, points[0].y);
-                        ctx.lineTo(points[1].x, points[1].y);
+                    if (pts.length >= 2) {
+                        ctx.moveTo(pts[0].x, pts[0].y);
+                        ctx.lineTo(pts[1].x, pts[1].y);
                     }
                 }
             }
@@ -171,6 +276,16 @@
     window.addEventListener('resize', resize);
     resize();
     animate();
+
+    // Cycling rainbow accent for controls UI
+    let _accentHue = Math.random() * 360;
+    (function cycleAccent() {
+        _accentHue = (_accentHue + 0.18) % 360;
+        const accent = `hsl(${_accentHue | 0}, 70%, 62%)`;
+        document.documentElement.style.setProperty('--accent', accent);
+        document.querySelectorAll('input[type="range"]').forEach(el => el.style.accentColor = accent);
+        requestAnimationFrame(cycleAccent);
+    })();
 </script>
 </body>
 </html>
