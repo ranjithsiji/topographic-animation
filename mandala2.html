@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dual Mandala</title>
+    <style>
+        :root { --accent: #aaa; }
+        body { margin: 0; background: #0a0a2e; overflow: hidden; font-family: 'Inter', system-ui, sans-serif; }
+        canvas { display: block; }
+
+        #panel {
+            position: fixed; right: 0; top: 0;
+            height: 100vh; width: 272px;
+            background: rgba(12, 8, 2, 0.96);
+            border-left: 1px solid var(--accent);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            transform: translateX(100%);
+            transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100; overflow-y: auto;
+        }
+        #panel.open { transform: translateX(0); }
+
+        #toggle-btn {
+            position: fixed; right: 0; top: 50%;
+            transform: translateY(-50%);
+            width: 28px; height: 60px;
+            background: rgba(12, 8, 2, 0.9);
+            border: 1px solid var(--accent); border-right: none;
+            border-radius: 8px 0 0 8px;
+            color: rgba(255,255,255,0.65); cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 101; font-size: 20px; line-height: 1; padding: 0;
+            transition: right 0.32s cubic-bezier(0.4,0,0.2,1), background 0.2s;
+        }
+        #toggle-btn.open { right: 272px; }
+        #toggle-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+
+        .panel-content { padding: 22px 18px; color: white; }
+        .panel-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px; padding-bottom: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+        }
+        .panel-title { font-size: 10px; text-transform: uppercase; letter-spacing: 2.5px; color: #666; }
+        .back-link { font-size: 11px; color: #666; text-decoration: none; transition: color 0.2s; }
+        .back-link:hover { color: #ccc; }
+
+        .row { margin-bottom: 16px; }
+        label {
+            display: flex; justify-content: space-between;
+            font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px;
+            margin-bottom: 6px; color: #666;
+        }
+        label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+        input[type="range"] { width: 100%; cursor: pointer; accent-color: var(--accent); }
+
+        .cpair { display: flex; gap: 8px; }
+        .cpair-item { flex:1; display:flex; flex-direction:column; align-items:center; gap:5px; }
+        .cpair-item input[type="color"] { width:100%; height:30px; border:none; cursor:pointer; background:none; border-radius:6px; }
+        .cpair-label { font-size:9px; color:#555; text-transform:uppercase; letter-spacing:0.8px; }
+
+        hr.sep { border:none; border-top:1px solid rgba(255,255,255,0.06); margin:18px 0; }
+    </style>
+</head>
+<body>
+
+<button id="toggle-btn">&#8249;</button>
+
+<div id="panel">
+    <div class="panel-content">
+        <div class="panel-header">
+            <a href="index.html" class="back-link">← Index</a>
+            <span class="panel-title">Controls</span>
+        </div>
+
+        <div class="row">
+            <label>Colors</label>
+            <div class="cpair">
+                <div class="cpair-item">
+                    <input type="color" id="bgColor" value="#0a0a2e">
+                    <span class="cpair-label">Background</span>
+                </div>
+                <div class="cpair-item">
+                    <input type="color" id="mandalaColor" value="#f0e050">
+                    <span class="cpair-label">Mandala</span>
+                </div>
+            </div>
+        </div>
+
+        <hr class="sep">
+
+        <div class="row">
+            <label>Inner Speed (← left) <span class="val" id="ispeed-val">3</span></label>
+            <input type="range" id="innerSpeed" min="0" max="20" value="3">
+        </div>
+
+        <div class="row">
+            <label>Outer Speed (→ right) <span class="val" id="ospeed-val">2</span></label>
+            <input type="range" id="outerSpeed" min="0" max="20" value="2">
+        </div>
+
+        <hr class="sep">
+
+        <div class="row">
+            <label>Outer Symmetry <span class="val" id="sym-val">12</span></label>
+            <input type="range" id="symmetry" min="4" max="12" step="2" value="12">
+        </div>
+
+        <div class="row">
+            <label>Spokes <span class="val" id="sp-val">36</span></label>
+            <input type="range" id="spokes" min="12" max="72" step="6" value="36">
+        </div>
+
+        <div class="row">
+            <label>Scale <span class="val" id="scale-val">100</span></label>
+            <input type="range" id="scale" min="20" max="125" value="100">
+        </div>
+
+        <div class="row">
+            <label>Line Width <span class="val" id="lw-val">1.5</span></label>
+            <input type="range" id="lineWidth" min="0.5" max="4.0" step="0.5" value="1.5">
+        </div>
+    </div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx    = canvas.getContext('2d');
+    const TAU    = Math.PI * 2;
+
+    const gui = {
+        bgColor:      document.getElementById('bgColor'),
+        mandalaColor: document.getElementById('mandalaColor'),
+        innerSpeed:   document.getElementById('innerSpeed'),
+        outerSpeed:   document.getElementById('outerSpeed'),
+        symmetry:     document.getElementById('symmetry'),
+        spokes:       document.getElementById('spokes'),
+        scale:        document.getElementById('scale'),
+        lineWidth:    document.getElementById('lineWidth'),
+    };
+
+    [['innerSpeed','ispeed-val'],['outerSpeed','ospeed-val'],
+     ['symmetry','sym-val'],['spokes','sp-val'],
+     ['scale','scale-val'],['lineWidth','lw-val']
+    ].forEach(([id, vid]) => {
+        document.getElementById(id).addEventListener('input', e => {
+            document.getElementById(vid).textContent = e.target.value;
+        });
+    });
+
+    let width, height, innerAngle = 0, outerAngle = 0;
+
+    // ─── Outer leaf arm ─────────────────────────────────────────────────────────
+    // Drawn pointing in -Y, base at -R, tip at -(R+armLen)
+    function drawLeafArm(R, armLen, armW, mc, bg, lw) {
+        // Filled almond shape
+        ctx.fillStyle = mc;
+        ctx.beginPath();
+        ctx.moveTo(0, -R);
+        ctx.bezierCurveTo( armW, -(R + armLen*0.24),  armW, -(R + armLen*0.76), 0, -(R + armLen));
+        ctx.bezierCurveTo(-armW, -(R + armLen*0.76), -armW, -(R + armLen*0.24), 0, -R);
+        ctx.closePath();
+        ctx.fill();
+
+        // Nested white inner contour lines
+        ctx.strokeStyle = bg;
+        ctx.lineWidth = lw * 1.1;
+        for (let j = 1; j <= 4; j++) {
+            const f   = j * 0.16;
+            const off = armLen * f * 0.22;
+            const bR  = R + off;
+            const bT  = R + armLen - off;
+            const bH  = bT - bR;
+            const bW  = armW * (1 - f * 0.62);
+            ctx.beginPath();
+            ctx.moveTo(0, -bR);
+            ctx.bezierCurveTo( bW, -(bR + bH*0.24),  bW, -(bR + bH*0.76), 0, -bT);
+            ctx.bezierCurveTo(-bW, -(bR + bH*0.76), -bW, -(bR + bH*0.24), 0, -bR);
+            ctx.closePath();
+            ctx.stroke();
+        }
+
+        // Teardrop cluster at the arm base
+        const tdH = armLen * 0.13;
+        const tdW = armW  * 0.11;
+        const positions = [0, -armW*0.50, armW*0.50, -armW*0.88, armW*0.88];
+        positions.forEach((ox, idx) => {
+            const oy = -(R + armLen * 0.08 + idx * armLen * 0.015);
+            ctx.save();
+            ctx.translate(ox, oy);
+            ctx.fillStyle = bg;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.bezierCurveTo( tdW, -tdH*0.38,  tdW*0.65, -tdH*0.78, 0, -tdH);
+            ctx.bezierCurveTo(-tdW*0.65, -tdH*0.78, -tdW, -tdH*0.38, 0, 0);
+            ctx.fill();
+            ctx.strokeStyle = mc;
+            ctx.lineWidth = lw * 0.7;
+            ctx.beginPath();
+            ctx.moveTo(0, -tdH*0.06); ctx.lineTo(0, -tdH*0.88);
+            ctx.stroke();
+            ctx.restore();
+        });
+
+        // Small dots along the sides of the arm
+        ctx.fillStyle = bg;
+        const nSideDots = 6;
+        for (let j = 1; j <= nSideDots; j++) {
+            const t   = j / (nSideDots + 1);
+            const ady = -(R + armLen * t);
+            // Width of arm at this t (approximate quadratic)
+            const aw  = armW * Math.sin(t * Math.PI) * 0.78;
+            ctx.beginPath(); ctx.arc( aw, ady, R * 0.013, 0, TAU); ctx.fill();
+            ctx.beginPath(); ctx.arc(-aw, ady, R * 0.013, 0, TAU); ctx.fill();
+        }
+    }
+
+    // ─── Between-arm elements ────────────────────────────────────────────────────
+    function drawBetweenArm(R, halfAngle, armLen, mc, bg, lw) {
+        const baseR = R * 1.04;
+        const tdH   = R * 0.24;
+        const tdW   = R * 0.068;
+        const count = 5;
+
+        // Fan of teardrops
+        for (let j = 0; j < count; j++) {
+            const a   = (j - (count-1)*0.5) * (halfAngle * 0.42 / ((count-1)*0.5));
+            const dist = baseR + R * 0.025 * j;
+            const px  = Math.sin(a) * dist;
+            const py  = -Math.cos(a) * dist;
+
+            ctx.save();
+            ctx.translate(px, py);
+            ctx.rotate(a);
+
+            ctx.fillStyle = mc;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.bezierCurveTo( tdW, -tdH*0.38,  tdW*0.68, -tdH*0.78, 0, -tdH);
+            ctx.bezierCurveTo(-tdW*0.68, -tdH*0.78, -tdW, -tdH*0.38, 0, 0);
+            ctx.fill();
+
+            ctx.strokeStyle = bg;
+            ctx.lineWidth = lw * 0.85;
+            ctx.beginPath();
+            ctx.moveTo(0, -tdH*0.06); ctx.lineTo(0, -tdH*0.90);
+            ctx.stroke();
+
+            // Small inner oval
+            ctx.lineWidth = lw * 0.65;
+            ctx.beginPath();
+            ctx.ellipse(0, -tdH*0.50, tdW*0.30, tdH*0.22, 0, 0, TAU);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // Concentric arc fan beyond teardrops
+        const fanY   = -(baseR + tdH * 1.38);
+        const fanR0  = R * 0.24;
+        ctx.strokeStyle = mc;
+        ctx.lineWidth   = lw * 1.2;
+        for (let j = 0; j < 6; j++) {
+            ctx.beginPath();
+            ctx.arc(0, fanY, fanR0 * (1 - j*0.16), Math.PI*1.08, Math.PI*1.92);
+            ctx.stroke();
+        }
+
+        // Dot row between teardrops and fan
+        const dotRow = baseR + tdH * 0.95;
+        const nDr    = 7;
+        ctx.fillStyle = mc;
+        for (let j = 0; j < nDr; j++) {
+            const da = (j - (nDr-1)*0.5) * (halfAngle * 0.70 / ((nDr-1)*0.5));
+            ctx.beginPath();
+            ctx.arc(Math.sin(da)*dotRow, -Math.cos(da)*dotRow, R*0.015, 0, TAU);
+            ctx.fill();
+        }
+    }
+
+    // ─── Inner circle mandala ────────────────────────────────────────────────────
+    function drawInnerMandala(R, nSpokes, mc, bg, lw) {
+        // Background fill
+        ctx.fillStyle = bg;
+        ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.fill();
+
+        // ── Outer petal ring (ellipses) ──
+        const nOP   = 16;
+        const opRing = R * 0.912;
+        ctx.fillStyle = mc;
+        for (let i = 0; i < nOP; i++) {
+            ctx.save();
+            ctx.rotate((i / nOP) * TAU);
+            ctx.beginPath();
+            ctx.ellipse(0, -opRing, R*0.044, R*0.082, 0, 0, TAU);
+            ctx.fill();
+            ctx.strokeStyle = bg;
+            ctx.lineWidth = lw * 0.85;
+            ctx.beginPath();
+            ctx.ellipse(0, -opRing, R*0.022, R*0.050, 0, 0, TAU);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // ── Outer boundary rings ──
+        ctx.strokeStyle = mc;
+        ctx.lineWidth = lw * 2.6;
+        ctx.beginPath(); ctx.arc(0,0, R*0.826, 0, TAU); ctx.stroke();
+        ctx.lineWidth = lw;
+        ctx.beginPath(); ctx.arc(0,0, R*0.800, 0, TAU); ctx.stroke();
+
+        // ── Outer dot ring ──
+        const ndO = 36;
+        ctx.fillStyle = mc;
+        for (let i = 0; i < ndO; i++) {
+            const a = (i / ndO) * TAU;
+            ctx.beginPath();
+            ctx.arc(Math.sin(a)*R*0.776, -Math.cos(a)*R*0.776, R*0.017, 0, TAU);
+            ctx.fill();
+        }
+
+        // ── Outer spokes ──
+        const outerOuter = R * 0.752;
+        const outerInner = R * 0.462;
+        ctx.strokeStyle = mc;
+        ctx.lineWidth   = lw * 0.95;
+        for (let i = 0; i < nSpokes; i++) {
+            const a = (i / nSpokes) * TAU;
+            ctx.beginPath();
+            ctx.moveTo(Math.sin(a)*outerInner, -Math.cos(a)*outerInner);
+            ctx.lineTo(Math.sin(a)*outerOuter, -Math.cos(a)*outerOuter);
+            ctx.stroke();
+        }
+
+        // ── Spoke boundary rings ──
+        ctx.lineWidth = lw * 2.6;
+        ctx.beginPath(); ctx.arc(0,0, R*0.752, 0, TAU); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0,0, R*0.462, 0, TAU); ctx.stroke();
+        ctx.lineWidth = lw;
+        ctx.beginPath(); ctx.arc(0,0, R*0.724, 0, TAU); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0,0, R*0.490, 0, TAU); ctx.stroke();
+
+        // ── Inner petal ring ──
+        const nIP    = 24;
+        const ipRing = R * 0.418;
+        ctx.fillStyle = mc;
+        for (let i = 0; i < nIP; i++) {
+            ctx.save();
+            ctx.rotate((i / nIP) * TAU);
+            ctx.beginPath();
+            ctx.ellipse(0, -ipRing, R*0.030, R*0.055, 0, 0, TAU);
+            ctx.fill();
+            ctx.strokeStyle = bg;
+            ctx.lineWidth = lw * 0.65;
+            ctx.beginPath();
+            ctx.ellipse(0, -ipRing, R*0.014, R*0.030, 0, 0, TAU);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // ── Mid rings ──
+        ctx.strokeStyle = mc;
+        ctx.lineWidth = lw * 2.2;
+        ctx.beginPath(); ctx.arc(0,0, R*0.360, 0, TAU); ctx.stroke();
+        ctx.lineWidth = lw;
+        ctx.beginPath(); ctx.arc(0,0, R*0.336, 0, TAU); ctx.stroke();
+
+        // ── Inner dot ring ──
+        const ndI = 24;
+        ctx.fillStyle = mc;
+        for (let i = 0; i < ndI; i++) {
+            const a = (i / ndI) * TAU;
+            ctx.beginPath();
+            ctx.arc(Math.sin(a)*R*0.312, -Math.cos(a)*R*0.312, R*0.013, 0, TAU);
+            ctx.fill();
+        }
+
+        // ── Inner short spokes ──
+        const nIS = Math.max(nSpokes, 36);
+        const iOuter = R * 0.298;
+        const iInner = R * 0.198;
+        ctx.strokeStyle = mc;
+        ctx.lineWidth   = lw * 0.80;
+        for (let i = 0; i < nIS; i++) {
+            const a = (i / nIS) * TAU;
+            ctx.beginPath();
+            ctx.moveTo(Math.sin(a)*iInner, -Math.cos(a)*iInner);
+            ctx.lineTo(Math.sin(a)*iOuter, -Math.cos(a)*iOuter);
+            ctx.stroke();
+        }
+
+        // ── Centre concentric rings ──
+        ctx.lineWidth = lw * 2.0;
+        [0.200, 0.152, 0.112, 0.080, 0.054, 0.034].forEach(f => {
+            ctx.beginPath(); ctx.arc(0, 0, R*f, 0, TAU); ctx.stroke();
+        });
+
+        // ── Centre dot (3-layer) ──
+        ctx.fillStyle = mc;
+        ctx.beginPath(); ctx.arc(0, 0, R*0.022, 0, TAU); ctx.fill();
+        ctx.fillStyle = bg;
+        ctx.beginPath(); ctx.arc(0, 0, R*0.011, 0, TAU); ctx.fill();
+        ctx.fillStyle = mc;
+        ctx.beginPath(); ctx.arc(0, 0, R*0.005, 0, TAU); ctx.fill();
+    }
+
+    // ─── Main animation loop ─────────────────────────────────────────────────────
+    function animate() {
+        const mc  = gui.mandalaColor.value;
+        const bg  = gui.bgColor.value;
+        const lw  = parseFloat(gui.lineWidth.value);
+        const N   = parseInt(gui.symmetry.value);
+        const nSp = parseInt(gui.spokes.value);
+        const scl = parseInt(gui.scale.value) / 100;
+
+        const cx = width  / 2;
+        const cy = height / 2;
+        // Inner-circle radius; outer arms extend beyond
+        const R      = Math.min(width, height) * 0.37 * scl;
+        const armLen = Math.sqrt(cx*cx + cy*cy) - R + R * 0.40;
+        const armW   = (TAU / N) * R * 0.40;
+        const halfAngle = Math.PI / N; // half angle between adjacent arms
+
+        // Background
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, width, height);
+
+        // ── OUTER PATTERN (rotates right / clockwise) ──
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(outerAngle);
+
+        for (let i = 0; i < N; i++) {
+            ctx.save();
+            ctx.rotate((i / N) * TAU);
+            drawLeafArm(R, armLen, armW, mc, bg, lw);
+            ctx.restore();
+        }
+
+        for (let i = 0; i < N; i++) {
+            ctx.save();
+            ctx.rotate(((i + 0.5) / N) * TAU);
+            drawBetweenArm(R, halfAngle, armLen, mc, bg, lw);
+            ctx.restore();
+        }
+
+        // Dot ring just outside inner circle
+        const ndBorder = N * 6;
+        ctx.fillStyle = mc;
+        for (let i = 0; i < ndBorder; i++) {
+            const a = (i / ndBorder) * TAU;
+            ctx.beginPath();
+            ctx.arc(Math.sin(a)*R*1.030, -Math.cos(a)*R*1.030, R*0.015, 0, TAU);
+            ctx.fill();
+        }
+
+        ctx.restore(); // end outer
+
+        // ── INNER CIRCLE (independent rotation, left / counter-clockwise) ──
+        ctx.save();
+        ctx.translate(cx, cy);
+
+        // Cover the inner area (erase outer pattern underneath)
+        ctx.fillStyle = bg;
+        ctx.beginPath(); ctx.arc(0, 0, R * 1.02, 0, TAU); ctx.fill();
+
+        // Static outer border ring (not rotated)
+        ctx.strokeStyle = mc;
+        ctx.lineWidth   = lw * 3.2;
+        ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.stroke();
+        ctx.lineWidth   = lw;
+        ctx.beginPath(); ctx.arc(0, 0, R * 1.032, 0, TAU); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, 0, R * 0.966, 0, TAU); ctx.stroke();
+
+        // Rotated inner content
+        ctx.save();
+        ctx.rotate(innerAngle);
+        drawInnerMandala(R * 0.958, nSp, mc, bg, lw);
+        ctx.restore();
+
+        ctx.restore(); // end inner
+
+        // Advance angles
+        innerAngle -= parseInt(gui.innerSpeed.value) * 0.00100; // left
+        outerAngle += parseInt(gui.outerSpeed.value) * 0.00075; // right
+
+        requestAnimationFrame(animate);
+    }
+
+    function resize() {
+        width  = canvas.width  = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+    }
+
+    const panel     = document.getElementById('panel');
+    const toggleBtn = document.getElementById('toggle-btn');
+    toggleBtn.addEventListener('click', () => {
+        const open = panel.classList.toggle('open');
+        toggleBtn.classList.toggle('open', open);
+        toggleBtn.innerHTML = open ? '&#8250;' : '&#8249;';
+    });
+
+    window.addEventListener('resize', resize);
+    resize();
+    animate();
+
+    let _accentHue = Math.random() * 360;
+    (function cycleAccent() {
+        _accentHue = (_accentHue + 0.18) % 360;
+        const accent = `hsl(${_accentHue | 0}, 70%, 62%)`;
+        document.documentElement.style.setProperty('--accent', accent);
+        document.querySelectorAll('input[type="range"]').forEach(el => el.style.accentColor = accent);
+        requestAnimationFrame(cycleAccent);
+    })();
+</script>
+</body>
+</html>

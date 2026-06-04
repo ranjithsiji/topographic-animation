@@ -79,47 +79,68 @@
             <label>Line Color</label>
             <div class="flex-row">
                 <input type="color" id="color" value="#ffa820">
-                <span class="color-hint">Lines, glow & floor</span>
+                <span class="color-hint">Lines &amp; bokeh</span>
             </div>
         </div>
 
         <div class="row">
-            <label>Floor Glow <span class="val" id="fglow-val">20</span></label>
-            <input type="range" id="floorGlow" min="0" max="40" value="20">
+            <label>Ground Color</label>
+            <div class="flex-row">
+                <input type="color" id="groundColor" value="#4488ff">
+                <span class="color-hint">Floor gradient &amp; glow</span>
+            </div>
         </div>
 
         <div class="row">
-            <label>Dot Glow <span class="val" id="dglow-val">0</span></label>
-            <input type="range" id="dotGlow" min="0" max="25" value="0">
+            <div class="flex-row">
+                <input type="checkbox" id="centerLight" checked
+                    style="width:15px;height:15px;cursor:pointer;accent-color:#fff;flex-shrink:0;">
+                <span class="color-hint" style="font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:#666;">Center Light</span>
+            </div>
+        </div>
+
+        <div class="row">
+            <label>Floor Glow <span class="val" id="fglow-val">0</span></label>
+            <input type="range" id="floorGlow" min="0" max="40" value="0">
+        </div>
+
+        <div class="row">
+            <label>Dot Glow <span class="val" id="dglow-val">16</span></label>
+            <input type="range" id="dotGlow" min="0" max="25" value="16">
         </div>
 
         <hr class="sep">
 
         <div class="row">
-            <label>Line Count <span class="val" id="lcount-val">55</span></label>
-            <input type="range" id="lineCount" min="10" max="130" value="55">
+            <label>Line Count <span class="val" id="lcount-val">100</span></label>
+            <input type="range" id="lineCount" min="10" max="130" value="100">
         </div>
 
         <div class="row">
-            <label>Rise Speed <span class="val" id="rspeed-val">5</span></label>
-            <input type="range" id="riseSpeed" min="1" max="18" value="5">
+            <label>Rise Speed <span class="val" id="rspeed-val">12</span></label>
+            <input type="range" id="riseSpeed" min="1" max="18" value="12">
         </div>
 
         <div class="row">
-            <label>Max Height % <span class="val" id="mheight-val">68</span></label>
-            <input type="range" id="maxHeight" min="15" max="90" value="68">
+            <label>Max Height % <span class="val" id="mheight-val">90</span></label>
+            <input type="range" id="maxHeight" min="15" max="90" value="90">
+        </div>
+
+        <div class="row">
+            <label>Floor Position % <span class="val" id="fpos-val">77</span></label>
+            <input type="range" id="floorPos" min="40" max="95" value="77">
         </div>
 
         <hr class="sep">
 
         <div class="row">
-            <label>Bokeh Count <span class="val" id="bcount-val">45</span></label>
-            <input type="range" id="bokehCount" min="0" max="100" value="45">
+            <label>Bokeh Count <span class="val" id="bcount-val">57</span></label>
+            <input type="range" id="bokehCount" min="0" max="100" value="57">
         </div>
 
         <div class="row">
-            <label>Floor Density <span class="val" id="fdense-val">5</span></label>
-            <input type="range" id="floorDensity" min="1" max="10" value="5">
+            <label>Floor Density <span class="val" id="fdense-val">9</span></label>
+            <input type="range" id="floorDensity" min="1" max="10" value="9">
         </div>
     </div>
 </div>
@@ -134,16 +155,19 @@
 
     const gui = {
         color:        document.getElementById('color'),
+        groundColor:  document.getElementById('groundColor'),
+        centerLight:  document.getElementById('centerLight'),
         floorGlow:    document.getElementById('floorGlow'),
         dotGlow:      document.getElementById('dotGlow'),
         lineCount:    document.getElementById('lineCount'),
         riseSpeed:    document.getElementById('riseSpeed'),
         maxHeight:    document.getElementById('maxHeight'),
+        floorPos:     document.getElementById('floorPos'),
         bokehCount:   document.getElementById('bokehCount'),
         floorDensity: document.getElementById('floorDensity'),
     };
 
-    const FLOOR = 0.77; // center of the floor band as fraction of screen height
+    let FLOOR = 0.77; // updated each frame from the Floor Position slider
 
     let width, height, time = 0;
     let lines = [], bokehList = [], floorSparkles = [];
@@ -180,7 +204,7 @@
         }
     }
 
-    function drawFloorSparkles(r, g, b) {
+    function drawFloorSparkles(gr, gg, gb) {
         const cx = width / 2;
         const baseY = height * FLOOR;
         floorSparkles.forEach(sp => {
@@ -194,14 +218,14 @@
 
             ctx.beginPath();
             ctx.arc(sp.x, py, sp.size, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(${r},${g},${Math.floor(b * 0.25)},${(sp.alpha * bright * twinkle).toFixed(3)})`;
+            ctx.fillStyle = `rgba(${gr},${gg},${Math.floor(gb * 0.4)},${(sp.alpha * bright * twinkle).toFixed(3)})`;
             ctx.fill();
         });
     }
 
     // ── floor wave ───────────────────────────────────────────────────────────
 
-    function drawFloor(r, g, b) {
+    function drawFloor(r, g, b, gr, gg, gb) {
         const cx    = width / 2;
         const baseY = height * FLOOR;
         const glowAmt = parseInt(gui.floorGlow.value);
@@ -223,14 +247,14 @@
             ctx.closePath();
 
             const fg = ctx.createLinearGradient(0, baseY - amp, 0, height);
-            fg.addColorStop(0,   `rgba(${r},${Math.floor(g * 0.45)},0,${la * 0.5})`);
-            fg.addColorStop(0.4, `rgba(${Math.floor(r * 0.75)},${Math.floor(g * 0.28)},0,${la})`);
-            fg.addColorStop(1,   `rgba(${Math.floor(r * 0.18)},${Math.floor(g * 0.07)},0,1)`);
+            fg.addColorStop(0,   `rgba(${gr},${Math.floor(gg * 0.45)},${Math.floor(gb * 0.45)},${la * 0.5})`);
+            fg.addColorStop(0.4, `rgba(${Math.floor(gr * 0.75)},${Math.floor(gg * 0.28)},${Math.floor(gb * 0.28)},${la})`);
+            fg.addColorStop(1,   `rgba(${Math.floor(gr * 0.18)},${Math.floor(gg * 0.07)},${Math.floor(gb * 0.07)},1)`);
             ctx.fillStyle = fg;
             ctx.fill();
         }
 
-        drawFloorSparkles(r, g, b);
+        drawFloorSparkles(gr, gg, gb);
 
         // Central lens glow on the floor
         if (glowAmt > 0) {
@@ -238,9 +262,9 @@
             const rx = width  * 0.38 * (glowAmt / 40);
             const ry = height * 0.10 * (glowAmt / 40);
             const rg = ctx.createRadialGradient(cx, baseY, 0, cx, baseY, Math.max(rx, ry));
-            rg.addColorStop(0,    `rgba(255,230,120,${a * 0.95})`);
-            rg.addColorStop(0.08, `rgba(${r},${g},30,${a * 0.75})`);
-            rg.addColorStop(0.3,  `rgba(${Math.floor(r * 0.6)},${Math.floor(g * 0.3)},0,${a * 0.25})`);
+            rg.addColorStop(0,    `rgba(255,255,255,${a * 0.95})`);
+            rg.addColorStop(0.08, `rgba(${gr},${gg},${gb},${a * 0.75})`);
+            rg.addColorStop(0.3,  `rgba(${Math.floor(gr * 0.6)},${Math.floor(gg * 0.3)},${Math.floor(gb * 0.3)},${a * 0.25})`);
             rg.addColorStop(1,    'rgba(0,0,0,0)');
 
             ctx.save();
@@ -398,22 +422,26 @@
         ctx.fillStyle = 'rgba(5, 3, 0, 0.38)';
         ctx.fillRect(0, 0, width, height);
 
-        // Diffuse warm upwelling behind the floor centre
-        const cx = width / 2;
-        const cy = height * FLOOR;
-        const rg = ctx.createRadialGradient(cx, cy, 0, cx, cy, height * 0.65);
-        rg.addColorStop(0,   `rgba(${r},${Math.floor(g * 0.4)},0,0.10)`);
-        rg.addColorStop(0.4, `rgba(${Math.floor(r * 0.4)},${Math.floor(g * 0.12)},0,0.04)`);
-        rg.addColorStop(1,   'rgba(0,0,0,0)');
-        ctx.fillStyle = rg;
-        ctx.fillRect(0, 0, width, height);
+        // Diffuse upwelling behind the floor centre (toggleable)
+        if (gui.centerLight.checked) {
+            const cx = width / 2;
+            const cy = height * FLOOR;
+            const rg = ctx.createRadialGradient(cx, cy, 0, cx, cy, height * 0.65);
+            rg.addColorStop(0,   `rgba(${r},${Math.floor(g * 0.4)},0,0.10)`);
+            rg.addColorStop(0.4, `rgba(${Math.floor(r * 0.4)},${Math.floor(g * 0.12)},0,0.04)`);
+            rg.addColorStop(1,   'rgba(0,0,0,0)');
+            ctx.fillStyle = rg;
+            ctx.fillRect(0, 0, width, height);
+        }
     }
 
     function animate() {
-        const [r, g, b] = hexRgb(gui.color.value);
+        FLOOR = parseInt(gui.floorPos.value) / 100; // live floor position
+        const [r,  g,  b ] = hexRgb(gui.color.value);
+        const [gr, gg, gb] = hexRgb(gui.groundColor.value);
 
         drawBackground(r, g, b);
-        drawFloor(r, g, b);
+        drawFloor(r, g, b, gr, gg, gb);
 
         syncCounts();
 
@@ -439,7 +467,7 @@
 
     // Live readouts
     [['floorGlow','fglow-val'],['dotGlow','dglow-val'],['lineCount','lcount-val'],
-     ['riseSpeed','rspeed-val'],['maxHeight','mheight-val'],
+     ['riseSpeed','rspeed-val'],['maxHeight','mheight-val'],['floorPos','fpos-val'],
      ['bokehCount','bcount-val'],['floorDensity','fdense-val']
     ].forEach(([id, vid]) => {
         document.getElementById(id).addEventListener('input', e => {
