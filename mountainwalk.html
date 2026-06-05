@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Mountain Walk</title>
+    <style>
+        :root { --accent: #aaa; }
+        body { margin: 0; background: #05030f; overflow: hidden; font-family: 'Inter', system-ui, sans-serif; }
+        canvas { display: block; }
+
+        #panel {
+            position: fixed; right: 0; top: 0;
+            height: 100vh; width: 270px;
+            background: rgba(5, 3, 15, 0.96);
+            border-left: 1px solid var(--accent);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            transform: translateX(100%);
+            transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100; overflow-y: auto;
+        }
+        #panel.open { transform: translateX(0); }
+
+        #toggle-btn {
+            position: fixed; right: 0; top: 50%;
+            transform: translateY(-50%);
+            width: 28px; height: 60px;
+            background: rgba(5, 3, 15, 0.9);
+            border: 1px solid var(--accent); border-right: none;
+            border-radius: 8px 0 0 8px;
+            color: rgba(255,255,255,0.65); cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 101; font-size: 20px; line-height: 1; padding: 0;
+            transition: right 0.32s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s;
+        }
+        #toggle-btn.open { right: 270px; }
+        #toggle-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+
+        .panel-content { padding: 22px 20px; color: white; }
+        .panel-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 22px; padding-bottom: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .panel-title { font-size: 10px; text-transform: uppercase; letter-spacing: 2.5px; color: #666; }
+        .back-link { font-size: 11px; color: #666; text-decoration: none; transition: color 0.2s; }
+        .back-link:hover { color: #ccc; }
+        .row { margin-bottom: 18px; }
+        label {
+            display: flex; justify-content: space-between;
+            font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px;
+            margin-bottom: 7px; color: #666;
+        }
+        label .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+        input[type="range"] { width: 100%; cursor: pointer; accent-color: var(--accent); }
+        .flex-row { display: flex; align-items: center; gap: 12px; }
+        input[type="color"] {
+            border: none; width: 38px; height: 26px;
+            cursor: pointer; background: none; border-radius: 5px; flex-shrink: 0;
+        }
+        .color-hint { font-size: 11px; color: #555; }
+        hr.sep { border: none; border-top: 1px solid rgba(255,255,255,0.05); margin: 18px 0; }
+        .toggle-row {
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 11px; color: #888; letter-spacing: 1px;
+            text-transform: uppercase; cursor: pointer; user-select: none;
+        }
+        .toggle-row input[type="checkbox"] {
+            appearance: none; -webkit-appearance: none;
+            width: 32px; height: 18px; background: #222;
+            border-radius: 9px; position: relative; cursor: pointer;
+            transition: background 0.2s; flex-shrink: 0; margin: 0;
+        }
+        .toggle-row input[type="checkbox"]::after {
+            content: ""; position: absolute;
+            width: 14px; height: 14px; background: #888;
+            border-radius: 50%; top: 2px; left: 2px;
+            transition: left 0.2s, background 0.2s;
+        }
+        .toggle-row input[type="checkbox"]:checked { background: var(--accent); }
+        .toggle-row input[type="checkbox"]:checked::after { left: 16px; background: white; }
+    </style>
+</head>
+<body>
+
+<button id="toggle-btn">&#8249;</button>
+
+<div id="panel">
+    <div class="panel-content">
+        <div class="panel-header">
+            <a href="index.html" class="back-link">← Index</a>
+            <span class="panel-title">Controls</span>
+        </div>
+
+        <div class="row">
+            <label>Background</label>
+            <div class="flex-row">
+                <input type="color" id="bgColor" value="#0a0e22">
+                <span class="color-hint">Night sky</span>
+            </div>
+        </div>
+
+        <div class="row">
+            <label>Road Color</label>
+            <div class="flex-row">
+                <input type="color" id="roadColor" value="#15131a">
+                <span class="color-hint">Asphalt</span>
+            </div>
+        </div>
+
+        <div class="row">
+            <label>Mountain Color</label>
+            <div class="flex-row">
+                <input type="color" id="mountainColor" value="#1a1f38">
+                <span class="color-hint">Silhouette</span>
+            </div>
+        </div>
+
+        <div class="row">
+            <label>Mountain Peak</label>
+            <div class="flex-row">
+                <input type="color" id="peakColor" value="#e8f0ff">
+                <span class="color-hint">Snow caps</span>
+            </div>
+        </div>
+
+        <div class="row">
+            <label>Grass Color</label>
+            <div class="flex-row">
+                <input type="color" id="grassColor" value="#03041A">
+                <span class="color-hint">Roadside</span>
+            </div>
+        </div>
+
+        <div class="row">
+            <label>Grass Blade</label>
+            <div class="flex-row">
+                <input type="color" id="grassBlade" value="#3aa86a">
+                <span class="color-hint">Blade tips</span>
+            </div>
+        </div>
+
+        <div class="row">
+            <label>Lamp Color</label>
+            <div class="flex-row">
+                <input type="color" id="lampColor" value="#ffd06a">
+                <span class="color-hint">Street lamps</span>
+            </div>
+        </div>
+
+        <hr class="sep">
+
+        <div class="row">
+            <label>Walk Speed <span class="val" id="speed-val">25</span></label>
+            <input type="range" id="walkSpeed" min="1" max="60" value="25">
+        </div>
+
+        <div class="row">
+            <label>Lamp Spacing <span class="val" id="lamp-val">8</span></label>
+            <input type="range" id="lampSpacing" min="1" max="8" value="8">
+        </div>
+
+        <div class="row">
+            <label>Lamp Glow <span class="val" id="lglow-val">28</span></label>
+            <input type="range" id="lampGlow" min="0" max="40" value="28">
+        </div>
+
+        <div class="row">
+            <label>Street Width <span class="val" id="width-val">99</span></label>
+            <input type="range" id="streetWidth" min="40" max="160" value="99">
+        </div>
+
+        <div class="row">
+            <label>Mountain Height <span class="val" id="mheight-val">52</span></label>
+            <input type="range" id="mountainHeight" min="30" max="100" value="52">
+        </div>
+
+        <div class="row">
+            <label>Mountain Density <span class="val" id="mdensity-val">9</span></label>
+            <input type="range" id="mountainDensity" min="6" max="30" value="9">
+        </div>
+
+        <div class="row">
+            <label>Snow Cap % <span class="val" id="snow-val">20</span></label>
+            <input type="range" id="snowCap" min="0" max="60" value="20">
+        </div>
+
+        <div class="row">
+            <label>Grass Density <span class="val" id="gdensity-val">100</span></label>
+            <input type="range" id="grassDensity" min="0" max="100" value="100">
+        </div>
+
+        <div class="row">
+            <label>Horizon % <span class="val" id="hz-val">64</span></label>
+            <input type="range" id="horizon" min="30" max="75" value="64">
+        </div>
+
+        <div class="row">
+            <label>Fog Intensity <span class="val" id="fog-val">42</span></label>
+            <input type="range" id="fog" min="0" max="100" value="42">
+        </div>
+
+        <hr class="sep">
+
+        <div class="row">
+            <label class="toggle-row">
+                <span>Mountains</span>
+                <input type="checkbox" id="showMountains" checked>
+            </label>
+        </div>
+
+        <div class="row">
+            <label class="toggle-row">
+                <span>Grass</span>
+                <input type="checkbox" id="showGrass" checked>
+            </label>
+        </div>
+
+        <div class="row">
+            <label class="toggle-row">
+                <span>Lamps</span>
+                <input type="checkbox" id="showLamps" checked>
+            </label>
+        </div>
+
+        <div class="row">
+            <label class="toggle-row">
+                <span>Moon</span>
+                <input type="checkbox" id="showMoon" checked>
+            </label>
+        </div>
+
+        <div class="row">
+            <label class="toggle-row">
+                <span>Moon Glow</span>
+                <input type="checkbox" id="moonGlow" checked>
+            </label>
+        </div>
+
+        <div class="row">
+            <label>Moon Color</label>
+            <div class="flex-row">
+                <input type="color" id="moonColor" value="#f4eccb">
+                <span class="color-hint">Disc colour</span>
+            </div>
+        </div>
+
+        <div class="row">
+            <label class="toggle-row">
+                <span>Stars</span>
+                <input type="checkbox" id="showStars" checked>
+            </label>
+        </div>
+    </div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx    = canvas.getContext('2d');
+
+    const gui = {
+        bgColor:         document.getElementById('bgColor'),
+        roadColor:       document.getElementById('roadColor'),
+        mountainColor:   document.getElementById('mountainColor'),
+        peakColor:       document.getElementById('peakColor'),
+        grassColor:      document.getElementById('grassColor'),
+        grassBlade:      document.getElementById('grassBlade'),
+        lampColor:       document.getElementById('lampColor'),
+        walkSpeed:       document.getElementById('walkSpeed'),
+        streetWidth:     document.getElementById('streetWidth'),
+        mountainHeight:  document.getElementById('mountainHeight'),
+        mountainDensity: document.getElementById('mountainDensity'),
+        snowCap:         document.getElementById('snowCap'),
+        grassDensity:    document.getElementById('grassDensity'),
+        lampSpacing:     document.getElementById('lampSpacing'),
+        lampGlow:        document.getElementById('lampGlow'),
+        horizon:         document.getElementById('horizon'),
+        fog:             document.getElementById('fog'),
+        showMountains:   document.getElementById('showMountains'),
+        showGrass:       document.getElementById('showGrass'),
+        showLamps:       document.getElementById('showLamps'),
+        showMoon:        document.getElementById('showMoon'),
+        moonGlow:        document.getElementById('moonGlow'),
+        moonColor:       document.getElementById('moonColor'),
+        showStars:       document.getElementById('showStars'),
+    };
+
+    let width, height;
+    let lamps     = [];   // [{side:-1|1, z}]
+    let stars     = [];   // [{xFrac, yFrac, r, alpha, tw, twSp}]
+    let mountains = [];   // [{cxUnits, baseUnits, peakUnits, hFactor, snow}]
+    let grass     = [];   // [{side, z, off, height, lean}]
+    let cameraZ   = 0;    // forward travel distance
+    const FAR_Z   = 200;  // furthest z spawned
+    const NEAR_Z  = -3;   // recycle when behind camera
+    const FOV     = 320;  // perspective focal length factor
+
+    // ── helpers ──────────────────────────────────────────────────────────────
+    function hexRgb(hex) {
+        return [
+            parseInt(hex.slice(1,3),16),
+            parseInt(hex.slice(3,5),16),
+            parseInt(hex.slice(5,7),16),
+        ];
+    }
+
+    // perspective project (cx, cy, fov) → screen point + scale
+    function project(x, y, z) {
+        const cz = z - cameraZ;
+        if (cz <= 0.05) return null;
+        const horizonPct = parseInt(gui.horizon.value) / 100;
+        const hy = height * horizonPct;
+        const k  = FOV / cz;
+        return {
+            sx: width * 0.5 + x * k,
+            sy: hy + y * k,
+            k,
+            cz,
+        };
+    }
+
+    // ── content generation ──────────────────────────────────────────────────
+
+    function spawnLamp(side, z) {
+        return { side, z };
+    }
+
+    // grass tuft on either side of the road, at world z and lateral offset
+    function spawnGrass(side, z) {
+        return {
+            side,
+            z,
+            off:    2 + Math.random() * 22,         // distance outside road kerb (world units)
+            height: 0.6 + Math.random() * 1.6,      // blade height in world units
+            lean:   (Math.random() - 0.5) * 0.6,    // sideways lean
+        };
+    }
+
+    function buildScene() {
+        lamps = [];
+        grass = [];
+        const lampSp   = parseInt(gui.lampSpacing.value);
+        const lampStep = 8 * lampSp / 3;
+
+        for (let z = 1; z < FAR_Z; z += lampStep) {
+            lamps.push(spawnLamp(-1, z));
+            lamps.push(spawnLamp( 1, z + lampStep * 0.5));
+        }
+
+        // grass tufts, packed near the camera, thinning out with distance
+        const gd = parseInt(gui.grassDensity.value);
+        if (gd > 0) {
+            for (let z = 0.5; z < 90; z += 0.6) {
+                const n = Math.max(0, Math.round(gd * 0.03 * (1 - z / 90)));
+                for (let i = 0; i < n; i++) {
+                    grass.push(spawnGrass(-1, z + Math.random() * 0.5));
+                    grass.push(spawnGrass( 1, z + Math.random() * 0.5));
+                }
+            }
+        }
+
+        // procedural stars (fixed in sky)
+        stars = [];
+        const N = 90;
+        for (let i = 0; i < N; i++) {
+            stars.push({
+                xFrac: Math.random(),
+                yFrac: Math.random() * 0.55,
+                r:     0.5 + Math.random() * 1.4,
+                alpha: 0.35 + Math.random() * 0.55,
+                tw:    Math.random() * Math.PI * 2,
+                twSp:  0.005 + Math.random() * 0.02,
+            });
+        }
+
+        // Mountain silhouette across the FULL horizon — natural jagged peaks, edge to edge.
+        mountains = [];
+        const mDensity = parseInt(gui.mountainDensity.value);
+        const SPAN     = 200;
+        const count    = Math.max(mDensity * 5, 40);
+
+        // Generate a jagged ridge from base-left (-0.5, 0) over the apex to
+        // base-right (+0.5, 0), with x in [-0.5,0.5] base-width fractions
+        // and y in [0,1] height fractions. Includes small sub-peaks for realism.
+        function makeRidge(peakXRel) {
+            const pts = [];
+            pts.push({ x: -0.5, y: 0 });
+
+            // ascent: left base → apex
+            const ascN = 5 + ((Math.random() * 4) | 0);
+            for (let i = 1; i < ascN; i++) {
+                const t = i / ascN;
+                // smooth-ish climb (square root) plus jaggy noise
+                const baseY = Math.pow(t, 0.85);
+                const yJit  = (Math.random() - 0.3) * 0.07;
+                const x     = -0.5 + (peakXRel + 0.5) * t + (Math.random() - 0.5) * 0.04;
+                pts.push({ x, y: Math.max(0, Math.min(0.98, baseY + yJit)) });
+            }
+            pts.push({ x: peakXRel, y: 1 });           // apex
+
+            // descent: apex → right base, sometimes with a sub-peak
+            const desN = 5 + ((Math.random() * 4) | 0);
+            const subPeakAt = Math.random() < 0.4 ? (0.35 + Math.random() * 0.3) : -1;
+            const subPeakY  = 0.55 + Math.random() * 0.25;
+            for (let i = 1; i < desN; i++) {
+                const t = i / desN;
+                let baseY = Math.pow(1 - t, 0.85);
+                if (subPeakAt > 0) {
+                    // bump up slightly around the sub-peak fraction
+                    const d = Math.abs(t - subPeakAt);
+                    if (d < 0.18) baseY = Math.max(baseY, subPeakY * (1 - d / 0.18));
+                }
+                const yJit = (Math.random() - 0.3) * 0.07;
+                const x    = peakXRel + (0.5 - peakXRel) * t + (Math.random() - 0.5) * 0.04;
+                pts.push({ x, y: Math.max(0, Math.min(0.98, baseY + yJit)) });
+            }
+            pts.push({ x: 0.5, y: 0 });
+            return pts;
+        }
+
+        for (let i = 0; i < count; i++) {
+            const cxUnits = -SPAN * 0.5 + Math.random() * SPAN;
+            const base    = 10 + Math.random() * 22;
+            const peakRel = (Math.random() - 0.5) * 0.35;          // apex x-offset in [-0.175, 0.175]
+            const hRoll   = Math.random();
+            let hFactor;
+            if      (hRoll < 0.25) hFactor = 0.55 + Math.random() * 0.35;
+            else if (hRoll < 0.65) hFactor = 0.30 + Math.random() * 0.25;
+            else                    hFactor = 0.12 + Math.random() * 0.18;
+
+            mountains.push({
+                cxUnits,
+                baseUnits: base,
+                peakRel,                                            // apex x in [-0.5, 0.5] frac
+                hFactor,
+                snow:    Math.random() < 0.55,
+                shade:   0.85 + Math.random() * 0.3,
+                shadowSide: Math.random() < 0.5 ? -1 : 1,           // which side is in shadow
+                ridge:   makeRidge(peakRel),
+            });
+        }
+        mountains.sort((a, b) => a.hFactor - b.hFactor);
+    }
+
+    function recycle() {
+        for (const l of lamps) {
+            if (l.z - cameraZ < NEAR_Z) {
+                let maxZ = l.z;
+                for (const o of lamps) if (o.side === l.side && o.z > maxZ) maxZ = o.z;
+                const lampSp = parseInt(gui.lampSpacing.value);
+                const lampStep = 8 * lampSp / 3;
+                l.z = maxZ + lampStep;
+            }
+        }
+        for (const g of grass) {
+            if (g.z - cameraZ < NEAR_Z) {
+                let maxZ = g.z;
+                for (const o of grass) if (o.side === g.side && o.z > maxZ) maxZ = o.z;
+                g.z      = maxZ + Math.random() * 0.6;
+                g.off    = 2 + Math.random() * 22;
+                g.height = 0.6 + Math.random() * 1.6;
+                g.lean   = (Math.random() - 0.5) * 0.6;
+            }
+        }
+    }
+
+    // ── drawing ──────────────────────────────────────────────────────────────
+    function drawSky(bgR, bgG, bgB) {
+        const horizonPct = parseInt(gui.horizon.value) / 100;
+        const hy = height * horizonPct;
+        const g  = ctx.createLinearGradient(0, 0, 0, hy);
+        g.addColorStop(0,    `rgb(${Math.max(0,bgR-4)},${Math.max(0,bgG-2)},${Math.min(255,bgB+18)})`);
+        g.addColorStop(0.7,  `rgb(${bgR},${bgG},${Math.min(255,bgB+6)})`);
+        g.addColorStop(1,    `rgb(${bgR},${bgG},${bgB})`);
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, width, hy);
+    }
+
+    // Ground around the road: grass fill (or fallback dim band when grass is off)
+    function drawGround(grR, grG, grB, bgR, bgG, bgB) {
+        const horizonPct = parseInt(gui.horizon.value) / 100;
+        const hy = height * horizonPct;
+        if (gui.showGrass.checked) {
+            // soft vertical gradient so grass looks deeper closer to camera
+            const g = ctx.createLinearGradient(0, hy, 0, height);
+            g.addColorStop(0, `rgb(${Math.max(0,grR-8)},${Math.max(0,grG-6)},${Math.max(0,grB-6)})`);
+            g.addColorStop(1, `rgb(${grR},${grG},${grB})`);
+            ctx.fillStyle = g;
+        } else {
+            ctx.fillStyle = `rgb(${Math.max(0,bgR+4)},${Math.max(0,bgG+4)},${Math.max(0,bgB+6)})`;
+        }
+        ctx.fillRect(0, hy, width, height - hy);
+    }
+
+    function drawMoon(moonR, moonG, moonB) {
+        if (!gui.showMoon.checked) return;
+        const horizonPct = parseInt(gui.horizon.value) / 100;
+        const hy = height * horizonPct;
+        const cx = width * 0.78;
+        const cy = hy * 0.32;
+        const r  = Math.min(width, height) * 0.045;
+
+        // soft halo — independently toggled
+        if (gui.moonGlow.checked) {
+            const halo = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r * 4);
+            halo.addColorStop(0,   `rgba(${moonR},${moonG},${moonB},0.35)`);
+            halo.addColorStop(0.5, `rgba(${moonR},${moonG},${moonB},0.08)`);
+            halo.addColorStop(1,   `rgba(0,0,0,0)`);
+            ctx.fillStyle = halo;
+            ctx.beginPath();
+            ctx.arc(cx, cy, r * 4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // disc
+        ctx.fillStyle = `rgb(${moonR},${moonG},${moonB})`;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    function drawStars() {
+        if (!gui.showStars.checked) return;
+        const horizonPct = parseInt(gui.horizon.value) / 100;
+        const hy = height * horizonPct;
+        for (const s of stars) {
+            const sx = s.xFrac * width;
+            const sy = s.yFrac * hy;
+            s.tw += s.twSp;
+            const a = s.alpha * (0.6 + 0.4 * Math.sin(s.tw));
+            ctx.fillStyle = `rgba(235,240,255,${a.toFixed(3)})`;
+            ctx.beginPath();
+            ctx.arc(sx, sy, s.r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // Natural mountain silhouettes along the horizon — jagged ridges with shaded faces
+    function drawMountains(mR, mG, mB, pR, pG, pB, bgR, bgG, bgB) {
+        if (!gui.showMountains.checked) return;
+        const horizonPct = parseInt(gui.horizon.value) / 100;
+        const hy      = height * horizonPct;
+        const cx      = width * 0.5;
+        const unitW   = Math.max(8, Math.min(width, height) * 0.014);
+        const mhSld   = parseInt(gui.mountainHeight.value) / 100;
+        const snowPct = parseInt(gui.snowCap.value) / 100;
+
+        for (const m of mountains) {
+            const baseY  = hy + 2;
+            const totalH = hy * m.hFactor * mhSld;
+            const peakY  = hy - totalH;
+            const halfBW = (m.baseUnits * 0.5) * unitW;
+            const baseX  = cx + m.cxUnits * unitW;
+            const leftX  = baseX - halfBW;
+            const rightX = baseX + halfBW;
+            const apexX  = baseX + m.peakRel * (m.baseUnits * unitW);
+
+            if (rightX < -10 || leftX > width + 10) continue;
+
+            // resolve ridge points to screen coords
+            const rs = m.ridge.map(p => ({
+                x: baseX + p.x * (m.baseUnits * unitW),
+                y: baseY - p.y * totalH,
+            }));
+
+            const shade = m.shade;
+            const fr = Math.min(255, Math.max(0, (mR * shade) | 0));
+            const fg = Math.min(255, Math.max(0, (mG * shade) | 0));
+            const fb = Math.min(255, Math.max(0, (mB * shade) | 0));
+
+            // ── body fill (jagged silhouette, vertical gradient)
+            const grad = ctx.createLinearGradient(0, peakY, 0, baseY);
+            grad.addColorStop(0, `rgb(${Math.min(255,fr+14)},${Math.min(255,fg+14)},${Math.min(255,fb+18)})`);
+            grad.addColorStop(1, `rgb(${fr},${fg},${fb})`);
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.moveTo(rs[0].x, rs[0].y);
+            for (let i = 1; i < rs.length; i++) ctx.lineTo(rs[i].x, rs[i].y);
+            ctx.closePath();
+            ctx.fill();
+
+            // ── shaded face (darker polygon on one side of the apex)
+            // find apex index in ridge (point with y == peak)
+            let apexIdx = 0;
+            for (let i = 1; i < rs.length; i++) {
+                if (rs[i].y < rs[apexIdx].y) apexIdx = i;
+            }
+            const dR = Math.max(0, (fr * 0.62) | 0);
+            const dG = Math.max(0, (fg * 0.62) | 0);
+            const dB = Math.max(0, (fb * 0.68) | 0);
+            ctx.fillStyle = `rgba(${dR},${dG},${dB},0.78)`;
+            ctx.beginPath();
+            if (m.shadowSide < 0) {
+                // shadow on the LEFT face — apex down to left base along the ridge
+                ctx.moveTo(rs[apexIdx].x, rs[apexIdx].y);
+                for (let i = apexIdx - 1; i >= 0; i--) ctx.lineTo(rs[i].x, rs[i].y);
+                ctx.lineTo(rs[apexIdx].x, baseY);     // straight down from apex
+            } else {
+                // shadow on the RIGHT face
+                ctx.moveTo(rs[apexIdx].x, rs[apexIdx].y);
+                for (let i = apexIdx + 1; i < rs.length; i++) ctx.lineTo(rs[i].x, rs[i].y);
+                ctx.lineTo(rs[apexIdx].x, baseY);
+            }
+            ctx.closePath();
+            ctx.fill();
+
+            // ── snow cap — jagged cap sitting at top of the mountain
+            if (m.snow && snowPct > 0) {
+                const capH     = totalH * snowPct;
+                const capBaseY = peakY + capH;
+                // find where ridge crosses capBaseY going down each side from apex
+                const findCross = (dir) => {
+                    let prev = rs[apexIdx];
+                    const end = dir < 0 ? -1 : rs.length;
+                    const step = dir < 0 ? -1 : 1;
+                    for (let i = apexIdx + step; i !== end; i += step) {
+                        const cur = rs[i];
+                        if (cur.y >= capBaseY) {
+                            // linear interp between prev (above) and cur (below)
+                            const t = (capBaseY - prev.y) / (cur.y - prev.y);
+                            return { x: prev.x + (cur.x - prev.x) * t, y: capBaseY };
+                        }
+                        prev = cur;
+                    }
+                    return prev;
+                };
+                const left   = findCross(-1);
+                const right  = findCross( 1);
+                const apex   = rs[apexIdx];
+                // jagged underline: a few small dips between apex and edges
+                const midL = { x: (apex.x + left.x ) * 0.5, y: capBaseY - capH * 0.18 };
+                const midR = { x: (apex.x + right.x) * 0.5, y: capBaseY - capH * 0.18 };
+                ctx.fillStyle = `rgba(${pR},${pG},${pB},0.95)`;
+                ctx.beginPath();
+                ctx.moveTo(apex.x, apex.y);
+                ctx.lineTo(right.x, right.y);
+                ctx.lineTo(midR.x,  midR.y);
+                ctx.lineTo(apex.x,  capBaseY - capH * 0.05);
+                ctx.lineTo(midL.x,  midL.y);
+                ctx.lineTo(left.x,  left.y);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            // ── ridge outline for definition
+            ctx.strokeStyle = `rgba(${Math.min(255,fr+22)},${Math.min(255,fg+22)},${Math.min(255,fb+28)},0.75)`;
+            ctx.lineWidth   = 1;
+            ctx.beginPath();
+            ctx.moveTo(rs[0].x, rs[0].y);
+            for (let i = 1; i < rs.length; i++) ctx.lineTo(rs[i].x, rs[i].y);
+            ctx.stroke();
+        }
+    }
+
+    function drawRoad(rR, rG, rB) {
+        const sw = parseInt(gui.streetWidth.value);
+        const horizonPct = parseInt(gui.horizon.value) / 100;
+        const hy = height * horizonPct;
+        const groundY = 28;
+
+        // pick near cz so the road edge reaches the bottom of the screen,
+        // far cz huge so the far edge of the road sits right at the horizon
+        const nearCz = groundY * FOV / Math.max(1, (height - hy));
+        const farCz  = 1500;                  // visually meets the horizon
+        const nearZ  = cameraZ + nearCz;
+        const farZ   = cameraZ + farCz;
+
+        const nl = project(-sw, groundY, nearZ);
+        const nr = project( sw, groundY, nearZ);
+        const fl = project(-sw, groundY, farZ);
+        const fr = project( sw, groundY, farZ);
+
+        if (nl && nr && fl && fr) {
+            ctx.fillStyle = `rgb(${rR},${rG},${rB})`;
+            ctx.beginPath();
+            ctx.moveTo(nl.sx, nl.sy);
+            ctx.lineTo(nr.sx, nr.sy);
+            ctx.lineTo(fr.sx, fr.sy);
+            ctx.lineTo(fl.sx, fl.sy);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // straight line from near→far is a perspective straight line on screen, so
+        // a single segment per kerb/lane is enough — also reaches all the way to horizon
+        const draw2pt = (off, color, lw) => {
+            const a = project(off, groundY, nearZ);
+            const b = project(off, groundY, farZ);
+            if (!a || !b) return;
+            ctx.strokeStyle = color;
+            ctx.lineWidth   = lw;
+            ctx.beginPath();
+            ctx.moveTo(a.sx, a.sy);
+            ctx.lineTo(b.sx, b.sy);
+            ctx.stroke();
+        };
+
+        // road-edge (kerb) lines, both sides
+        draw2pt(-sw, 'rgba(245,245,255,0.95)', 2);
+        draw2pt( sw, 'rgba(245,245,255,0.95)', 2);
+
+        // inner lane lines
+        draw2pt(-sw * 0.33, 'rgba(220,220,235,0.55)', 1.4);
+        draw2pt( sw * 0.33, 'rgba(220,220,235,0.55)', 1.4);
+
+        // dashed center markings — generated camera-relative each frame so they
+        // are always evenly spaced from "right under you" to the horizon
+        const DASH_LEN = 2.4;
+        const GAP_LEN  = 3.6;
+        const STEP     = DASH_LEN + GAP_LEN;          // one period
+        // first dash position past the near plane, aligned to a global grid
+        // so dashes don't slide weirdly relative to each other
+        const z0 = Math.ceil(nearZ / STEP) * STEP;
+        ctx.save();
+        ctx.fillStyle = `rgba(250,250,255,0.95)`;
+        for (let z = z0; z < farZ; z += STEP) {
+            const p1 = project(0, groundY, z);
+            const p2 = project(0, groundY, z + DASH_LEN);
+            if (!p1 || !p2) continue;
+            if (p1.sy - p2.sy < 0.5) continue;        // sub-pixel, skip
+            const w  = Math.min(28, Math.max(2,   (sw * 0.04) * p1.k));
+            const w2 = Math.min(28, Math.max(1.2, (sw * 0.04) * p2.k));
+            ctx.beginPath();
+            ctx.moveTo(p1.sx - w/2,  p1.sy);
+            ctx.lineTo(p1.sx + w/2,  p1.sy);
+            ctx.lineTo(p2.sx + w2/2, p2.sy);
+            ctx.lineTo(p2.sx - w2/2, p2.sy);
+            ctx.closePath();
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+
+    // Grass tufts along both sides of the road
+    function drawGrass(grR, grG, grB, bR, bG, bB) {
+        if (!gui.showGrass.checked) return;
+        const sw = parseInt(gui.streetWidth.value);
+        const groundY = 28;
+        const fogAmt  = parseInt(gui.fog.value) / 100;
+        const MAX_BLADE_W = 3;
+
+        // far-to-near so close tufts paint over distant ones
+        const sorted = grass.slice().sort((a, b) => b.z - a.z);
+
+        ctx.lineCap = 'round';
+        for (const g of sorted) {
+            const cz = g.z - cameraZ;
+            if (cz < 0.5) continue;
+            const worldX = g.side * (sw + g.off);
+            const tipY   = groundY - g.height;
+            const pBase  = project(worldX, groundY, g.z);
+            const pTip   = project(worldX + g.lean, tipY, g.z);
+            if (!pBase || !pTip) continue;
+            const fog = 1 - Math.min(1, cz / 80 * fogAmt);
+            if (fog <= 0.05) continue;
+
+            const lw = Math.min(MAX_BLADE_W, Math.max(0.6, 0.6 * pBase.k * 0.07));
+            // blade — gradient from darker root to bright tip
+            const grd = ctx.createLinearGradient(pBase.sx, pBase.sy, pTip.sx, pTip.sy);
+            grd.addColorStop(0, `rgba(${Math.max(0,grR-10)},${Math.max(0,grG-10)},${Math.max(0,grB-10)},${(0.9*fog).toFixed(3)})`);
+            grd.addColorStop(1, `rgba(${bR},${bG},${bB},${(0.95*fog).toFixed(3)})`);
+            ctx.strokeStyle = grd;
+            ctx.lineWidth   = lw;
+            ctx.beginPath();
+            ctx.moveTo(pBase.sx, pBase.sy);
+            ctx.lineTo(pTip.sx,  pTip.sy);
+            ctx.stroke();
+        }
+    }
+
+    function drawLamps(lampR, lampG, lampB) {
+        if (!gui.showLamps.checked) return;
+        const sw   = parseInt(gui.streetWidth.value);
+        const glow = parseInt(gui.lampGlow.value);
+        const fogAmt = parseInt(gui.fog.value) / 100;
+        const sorted = lamps.slice().sort((a, b) => b.z - a.z);
+        const NEAR     = 3;     // skip lamps too close to camera
+        const MAX_HEAD = 14;    // cap lamp head pixel radius
+        const MAX_LW   = 3.5;
+
+        // Pole stands right at the road edge (just on the sidewalk side),
+        // arm projects horizontally INWARD over the road,
+        // head hangs at the end of the arm.
+        const poleX    = side => side * (sw + 2);            // hugs the road kerb
+        const armEndX  = side => side * (sw - sw * 0.22);    // ~22% into road
+        const poleTopY = -24;
+        const headY    = -21;
+        const baseY    = 28;
+
+        for (const l of sorted) {
+            if (l.z - cameraZ < NEAR) continue;
+            const pBase  = project(poleX(l.side), baseY,    l.z);
+            const pTop   = project(poleX(l.side), poleTopY, l.z);
+            const pHead  = project(armEndX(l.side), headY,  l.z);
+            if (!pBase || !pTop || !pHead) continue;
+            const dist = l.z - cameraZ;
+            const fog  = 1 - Math.min(1, dist / 70 * fogAmt);
+            if (fog <= 0.05) continue;
+
+            const poleW = Math.min(MAX_LW, Math.max(1, 2 * pBase.k * 0.04));
+
+            // vertical pole
+            ctx.strokeStyle = `rgba(150,155,175,${(0.85*fog).toFixed(3)})`;
+            ctx.lineWidth   = poleW;
+            ctx.lineCap     = 'round';
+            ctx.beginPath();
+            ctx.moveTo(pBase.sx, pBase.sy);
+            ctx.lineTo(pTop.sx,  pTop.sy);
+            ctx.stroke();
+
+            // horizontal arm projecting toward road centerline
+            ctx.lineWidth = Math.max(1, poleW * 0.7);
+            ctx.beginPath();
+            ctx.moveTo(pTop.sx,  pTop.sy);
+            ctx.lineTo(pHead.sx, pHead.sy);
+            ctx.stroke();
+
+            // short vertical drop from arm to head (so the head clearly hangs)
+            const pHeadTop = project(armEndX(l.side), headY - 1.2, l.z);
+            if (pHeadTop) {
+                ctx.beginPath();
+                ctx.moveTo(pHeadTop.sx, pHeadTop.sy);
+                ctx.lineTo(pHead.sx,    pHead.sy);
+                ctx.stroke();
+            }
+
+            // lamp head glow — bigger, capped so near lamps don't explode
+            const r = Math.min(MAX_HEAD, Math.max(3.5, 7.5 * pHead.k * 0.04));
+            ctx.save();
+            ctx.shadowBlur  = glow * 1.6 * fog;
+            ctx.shadowColor = `rgb(${lampR},${lampG},${lampB})`;
+            ctx.fillStyle   = `rgba(${lampR},${lampG},${lampB},${(0.98*fog).toFixed(3)})`;
+            ctx.beginPath();
+            ctx.arc(pHead.sx, pHead.sy, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // soft halo on ground directly under the lamp head
+            const pG = project(armEndX(l.side), baseY - 0.4, l.z);
+            if (pG) {
+                const haloR = Math.min(60, Math.max(8, 26 * pHead.k * 0.08));
+                const grd = ctx.createRadialGradient(pG.sx, pG.sy, 0, pG.sx, pG.sy, haloR);
+                grd.addColorStop(0, `rgba(${lampR},${lampG},${lampB},${(0.22*fog).toFixed(3)})`);
+                grd.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = grd;
+                ctx.beginPath();
+                ctx.arc(pG.sx, pG.sy, haloR, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    }
+
+    function drawFog(bgR, bgG, bgB) {
+        const fogAmt = parseInt(gui.fog.value) / 100;
+        if (fogAmt <= 0) return;
+        const horizonPct = parseInt(gui.horizon.value) / 100;
+        const hy = height * horizonPct;
+        const grd = ctx.createRadialGradient(width/2, hy, 0, width/2, hy, width * 0.7);
+        grd.addColorStop(0,    `rgba(${bgR+20},${bgG+10},${bgB+30},${(0.6*fogAmt).toFixed(3)})`);
+        grd.addColorStop(0.45, `rgba(${bgR},${bgG},${bgB},${(0.2*fogAmt).toFixed(3)})`);
+        grd.addColorStop(1,    'rgba(0,0,0,0)');
+        ctx.fillStyle = grd;
+        ctx.fillRect(0, hy - height*0.2, width, height*0.5);
+    }
+
+    // ── animate ──────────────────────────────────────────────────────────────
+    function animate() {
+        const [bgR, bgG, bgB] = hexRgb(gui.bgColor.value);
+        const [rR, rG, rB]    = hexRgb(gui.roadColor.value);
+        const [mR, mG, mB]    = hexRgb(gui.mountainColor.value);
+        const [pR, pG, pB]    = hexRgb(gui.peakColor.value);
+        const [grR, grG, grB] = hexRgb(gui.grassColor.value);
+        const [bR, bG, bB]    = hexRgb(gui.grassBlade.value);
+        const [lampR, lampG, lampB] = hexRgb(gui.lampColor.value);
+        const [moonR, moonG, moonB] = hexRgb(gui.moonColor.value);
+
+        drawSky(bgR, bgG, bgB);
+        drawStars();
+        drawMoon(moonR, moonG, moonB);
+        drawMountains(mR, mG, mB, pR, pG, pB, bgR, bgG, bgB);
+        drawGround(grR, grG, grB, bgR, bgG, bgB);
+        drawRoad(rR, rG, rB);
+        drawGrass(grR, grG, grB, bR, bG, bB);
+        drawLamps(lampR, lampG, lampB);
+        drawFog(bgR, bgG, bgB);
+
+        cameraZ += parseFloat(gui.walkSpeed.value) * 0.012;
+        recycle();
+
+        requestAnimationFrame(animate);
+    }
+
+    // ── lifecycle ────────────────────────────────────────────────────────────
+    function resize() {
+        width  = canvas.width  = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+    }
+
+    // ── panel wiring ─────────────────────────────────────────────────────────
+    const panel     = document.getElementById('panel');
+    const toggleBtn = document.getElementById('toggle-btn');
+    toggleBtn.addEventListener('click', () => {
+        const open = panel.classList.toggle('open');
+        toggleBtn.classList.toggle('open', open);
+        toggleBtn.innerHTML = open ? '&#8250;' : '&#8249;';
+    });
+
+    gui.bgColor.addEventListener('input', () => {
+        document.body.style.backgroundColor = gui.bgColor.value;
+    });
+
+    [['walkSpeed','speed-val'],['streetWidth','width-val'],
+     ['mountainHeight','mheight-val'],['mountainDensity','mdensity-val'],
+     ['snowCap','snow-val'],['grassDensity','gdensity-val'],
+     ['lampSpacing','lamp-val'],['lampGlow','lglow-val'],
+     ['horizon','hz-val'],['fog','fog-val']
+    ].forEach(([id, vid]) => {
+        document.getElementById(id).addEventListener('input', e => {
+            document.getElementById(vid).textContent = e.target.value;
+        });
+    });
+
+    ['mountainDensity','lampSpacing','grassDensity'].forEach(id => {
+        document.getElementById(id).addEventListener('change', buildScene);
+    });
+
+    window.addEventListener('resize', resize);
+    resize();
+    buildScene();
+    animate();
+
+    // Cycling rainbow accent for controls UI
+    let _accentHue = Math.random() * 360;
+    (function cycleAccent() {
+        _accentHue = (_accentHue + 0.18) % 360;
+        const accent = `hsl(${_accentHue | 0}, 70%, 62%)`;
+        document.documentElement.style.setProperty('--accent', accent);
+        document.querySelectorAll('input[type="range"]').forEach(el => el.style.accentColor = accent);
+        requestAnimationFrame(cycleAccent);
+    })();
+</script>
+</body>
+</html>
